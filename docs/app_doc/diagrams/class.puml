@@ -1,7 +1,251 @@
 @startuml
-
-class PingController {
-  + ping(): String
+' Define enumeraciones
+enum GameState {
+  SETUP
+  IN_GAME
+  PAUSE
+  GAME_OVER
 }
+
+enum CardType {
+  INFANTRY
+  CAVALRY
+  ARTILLERY
+  WILD
+}
+
+enum ObjectiveType {
+  CONQUER
+  ELIMINATE_PLAYER
+  COMMON
+}
+
+enum BotLevel {
+  NOVICE
+  BALANCED
+  EXPERT
+}
+
+enum EventType {
+  ATTACK
+  REGROUPING
+  EXCHANGE
+  REFORCE
+  END_TURN
+}
+
+interface BotStrategy{
+  reinforce: void
+  attack: CombatResult
+  fortify: void
+}
+
+class User {
+  - id : Long
+  - username : String
+  - passwordHash : String
+  - email : String
+  - avatarUrl : String
+  - playerProfiles : List<Player>
+  - sentInvitations : List<Invitation>
+  - receivedInvitations : List<Invitation>
+
+  + authenticate(rawPassword : String) : boolean
+  + updateEmail(newEmail : String)
+  + updateAvatar(url : String)
+}
+
+class BotProfile {
+  - id : Long
+  - level : BotLevel
+  - strategy : BotStrategy
+
+  + create(level : BotLevel) : BotProfile
+  + getName() : String
+}
+
+class Player {
+  - id : Long
+  - user : User
+  - botProfile : BotProfile
+  - objective : Objective
+  - hand : List<Card>
+  - status : PlayerStatus
+  - armiesToPlace : int
+  - seatOrder : int
+
+  + placeReinforcements()
+  + performAttack()
+  + performFortify()
+  + tradeCards()
+  + isEliminated() : boolean
+  + hasWon(game : Game) : boolean
+  + isHuman() : boolean
+  + isBot() : boolean
+}
+
+class Game {
+  - id : Long
+  - players : List<Player>
+  - territories : Map<Country, GameTerritory>
+  - deck : Deck
+  - events : List<GameEvent>
+  - currentPhase : GamePhase
+  - currentTurn : int
+  - commRules : CommunicationRules
+  - turnTimer : TurnTimer
+  - open : boolean
+  - maxPlayers : int
+
+  + start()
+  + end()
+  + nextTurn()
+  + attack(attacker, from, to, dA, dD) : CombatResult
+  + reinforce(player, placements)
+  + fortify(player, from, to, armies)
+  + drawCards(count : int) : List<Card>
+  + tradeCards(player, cards : List<Card>)
+  + isOver() : boolean
+  + getWinner() : Player
+  + saveSnapshot()
+  + hasSlot() : boolean
+  + isOpen() : boolean
+  + addPlayer(user : User) : Player
+  + setOpen(open : boolean)
+}
+
+class Country {
+  - id : Long
+  - name : String
+  - continent : Continent
+  - owner : Player
+  - armies : int
+  - neighbors : Set<Country>
+
+  + isNeighbor(other : Country) : boolean
+  + canAttackFrom(from : Country) : boolean
+}
+
+class Continent {
+  - id : Long
+  - name : String
+  - bonusArmies : int
+  - countries : Set<Country>
+
+  + isControlledBy(player : Player) : boolean
+}
+
+class Card {
+  - id : Long
+  - country : Country
+  - type : CardType
+}
+
+class Deck {
+  - drawPile : Deque<Card>
+  - discardPile : List<Card>
+
+  + draw() : Card
+  + discard(cards : List<Card>)
+  + remaining() : int
+}
+
+class Objective {
+  - id : Long
+  - type : ObjectiveType
+  - description : String
+
+  + isAchieved(game : Game, player : Player) : boolean
+}
+
+class GameEvent {
+  - id : Long
+  - turnNumber : int
+  - actor : Player
+  - type : EventType
+  - data : String
+  - timestamp : LocalDateTime
+
+  + apply(state : GameState)
+}
+
+class CombatResult {
+  - attackerOrigin : Country
+  - defenderTarget : Country
+  - attackerDice : int[]
+  - defenderDice : int[]
+  - attackerLosses : int
+  - defenderLosses : int
+  - territoryConquered : boolean
+}
+
+class ChatMessage {
+  - id : Long
+  - sender : Player
+  - gameId : Long
+  - content : String
+  - sentAt : LocalDateTime
+}
+
+class TurnTimer {
+  - id : Long
+  - game : Game
+  - player : Player
+  - startTime : LocalDateTime
+  - endTime : LocalDateTime
+  - timedOut : boolean
+
+  + start()
+  + cancel()
+  + hasTimedOut() : boolean
+}
+
+class GameSnapshot {
+  - id : Long
+  - gameId : Long
+  - turnNumber : int
+  - serializedState : String
+  - createdAt : LocalDateTime
+
+  + createFrom(game : Game) : GameSnapshot
+  + restore(game : Game)
+}
+
+class Invitation {
+  - id : Long
+  - game : Game
+  - sender : User
+  - recipient : User
+  - status : InvitationStatus
+  - sentAt : LocalDateTime
+  - respondedAt : LocalDateTime
+
+  + accept()
+  + decline()
+}
+
+class RuleViolationReport {
+  - id : Long
+  - reporter : Player
+  - reported : Player
+  - reason : String
+  - reportedAt : LocalDateTime
+
+  + vote(voter : Player, approve : boolean)
+}
+
+class Vote {
+  - report : RuleViolationReport
+  - voter : Player
+  - approve : boolean
+}
+
+class CommunicationRules {
+  - chatAllowed : boolean
+  - privateAgreementsAllowed : boolean
+
+  + validate(msg : ChatMessage) : boolean
+}
+
 
 @enduml
