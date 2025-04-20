@@ -135,7 +135,7 @@ entity TurnTimer {
 Games --> States
 
 ' Players connections
-Players --> Games
+Players *--> Games
 Players --> Bots
 Players --> Users
 Players --> Objectives
@@ -163,21 +163,21 @@ Messages --> Games
 
 ' Player_Hand connections
 Player_Hand --> Cards
-Player_Hand --> Players
+Player_Hand *--> Players
 Player_Hand --> Games
 
 ' GameSnapshots connection
-GameSnapshots --> Games
+GameSnapshots *--> Games
 
 ' TurnTimer connections
-TurnTimer --> Games
+TurnTimer *--> Games
 TurnTimer --> Players
 
 ' TypeObjective connections
 TypeObjective --> Objectives
 
 ' Phases connections
-Phases --> Games
+Games --> Phases
 
 
 @enduml
