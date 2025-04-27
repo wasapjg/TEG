@@ -3,3 +3,4 @@
 - [**Database Schema Diagrams**](/diagrams/database_diagram.md)
 - [**Components Diagrams**](/diagrams/components_diagram.md)
 - [**Sequences Diagrams**](/diagrams/sequences_diagram.md)
+- [**UX**](/diagrams/UX.md)
