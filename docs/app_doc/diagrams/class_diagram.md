@@ -8,9 +8,10 @@
 ```
 
 ---
+# TEG CLASS DIAGRAM
 
-## 🧍‍♂️ 1. User
 
+**Class:** `User`
 ```java
 public class User {
     private Long id;
@@ -29,12 +30,32 @@ public class User {
 }
 ```
 
-> **Why:** Represents an authenticated human user. Can join and create games, and receive invitations. We separated it from `Player` to maintain identity boundaries.
 
----
+**Class:** `Player`
+```java
+public class Player {
+    private Long id;
+    private User user;              // null if bot
+    private BotProfile botProfile;  // null if human
+    private Objective objective;
+    private List<Card> hand;
+    private PlayerStatus status;
+    private int armiesToPlace;
+    private int seatOrder;
 
-## 🤖 2. BotProfile
+    public void placeReinforcements();
+    public void performAttack();
+    public void performFortify();
+    public void tradeCards();
 
+    public boolean isEliminated();
+    public boolean hasWon(Game game);
+    public boolean isHuman();
+    public boolean isBot();
+}
+```
+
+**Class:** `BotProfile`
 ```java
 public class BotProfile {
     private Long id;
@@ -46,12 +67,7 @@ public class BotProfile {
 }
 ```
 
-> **Why:** Allows creation of bots with configurable difficulty. The `BotStrategy` handles decision-making behavior.
-
----
-
-## 🎮 3. Game
-
+**Class:** `Game`
 ```java
 public class Game {
     private Long id;
@@ -86,41 +102,7 @@ public class Game {
 }
 ```
 
-> **Why:** Core game entity that manages everything. `saveSnapshot()` supports event sourcing.
-
----
-
-## 🧍‍♀️ 4. Player
-
-```java
-public class Player {
-    private Long id;
-    private User user;              // null if bot
-    private BotProfile botProfile;  // null if human
-    private Objective objective;
-    private List<Card> hand;
-    private PlayerStatus status;
-    private int armiesToPlace;
-    private int seatOrder;
-
-    public void placeReinforcements();
-    public void performAttack();
-    public void performFortify();
-    public void tradeCards();
-
-    public boolean isEliminated();
-    public boolean hasWon(Game game);
-    public boolean isHuman();
-    public boolean isBot();
-}
-```
-
-> **Why:** Abstracts participation in a game. Uses references to `User` or `BotProfile`, never both. Contains phase-specific logic.
-
----
-
-## 🗺️ 5. Country
-
+**Class:** `Country`
 ```java
 public class Country {
     private Long id;
@@ -135,12 +117,7 @@ public class Country {
 }
 ```
 
-> **Why:** Represents a territory in the game. Contains ownership, armies, and adjacency logic.
-
----
-
-## 🌍 6. Continent
-
+**Class:** `Continent`
 ```java
 public class Continent {
     private Long id;
@@ -152,26 +129,7 @@ public class Continent {
 }
 ```
 
-> **Why:** Needed to determine control bonuses.
-
----
-
-## 🎴 7. Card
-
-```java
-public class Card {
-    private Long id;
-    private Country country;
-    private CardType type;  // INFANTRY, CAVALRY, CANNON
-}
-```
-
-> **Why:** Used for reinforcements. Linked to a country.
-
----
-
-## 🃏 8. Deck
-
+**Class:** `Deck`
 ```java
 public class Deck {
     private Deque<Card> drawPile;
@@ -183,12 +141,8 @@ public class Deck {
 }
 ```
 
-> **Why:** Manages card lifecycle. Makes card logic reusable/testable.
 
----
-
-## 🧩 9. Objective
-
+**Class:** `Objective`
 ```java
 public class Objective {
     private Long id;
@@ -199,12 +153,8 @@ public class Objective {
 }
 ```
 
-> **Why:** Each player has one. Determines victory condition.
 
----
-
-## 📝 10. GameEvent
-
+**Class:** `GameEvent`
 ```java
 public class GameEvent {
     private Long id;
@@ -218,46 +168,8 @@ public class GameEvent {
 }
 ```
 
-> **Why:** Powers event sourcing and game history. Replayable, auditable.
 
----
-
-## ⚔️ 11. CombatResult
-
-```java
-public class CombatResult {
-    private Country attackerOrigin;
-    private Country defenderTarget;
-    private int[] attackerDice;
-    private int[] defenderDice;
-    private int attackerLosses;
-    private int defenderLosses;
-    private boolean territoryConquered;
-}
-```
-
-> **Why:** Represents battle outcome. Read-only result.
-
----
-
-## 💬 12. ChatMessage
-
-```java
-public class ChatMessage {
-    private Long id;
-    private Player sender;
-    private Long gameId;
-    private String content;
-    private LocalDateTime sentAt;
-}
-```
-
-> **Why:** For in-game communication. Works with Redis + WebSocket.
-
----
-
-## ⏱️ 13. TurnTimer
-
+**Class:** `TurnTimer`
 ```java
 public class TurnTimer {
     private Long id;
@@ -273,12 +185,8 @@ public class TurnTimer {
 }
 ```
 
-> **Why:** Tracks time per turn. Supports automatic skips/timeouts.
 
----
-
-## 📷 14. GameSnapshot
-
+**Class:** `GameSnapshot`
 ```java
 public class GameSnapshot {
     private Long id;
@@ -292,12 +200,8 @@ public class GameSnapshot {
 }
 ```
 
-> **Why:** Optimization for event replay. Supports resume & replay.
 
----
-
-## 💌 15. Invitation
-
+**Class:** `Invitation`
 ```java
 public class Invitation {
     private Long id;
@@ -313,12 +217,44 @@ public class Invitation {
 }
 ```
 
-> **Why:** Allows private invites. Extends public join functionality.
+**Class:** `CommunicationRules`
+```java
+public class CommunicationRules {
+    private boolean chatAllowed;
+    private boolean privateAgreementsAllowed;
 
----
+    public boolean validate(ChatMessage msg);
+}
+```
 
-## 🚫 16. RuleViolationReport
 
+**Class:** `CombatResult`
+```java
+public class CombatResult {
+    private Country attackerOrigin;
+    private Country defenderTarget;
+    private int[] attackerDice;
+    private int[] defenderDice;
+    private int attackerLosses;
+    private int defenderLosses;
+    private boolean territoryConquered;
+}
+```
+
+
+**Class:** `ChatMessage`
+```java
+public class ChatMessage {
+    private Long id;
+    private Player sender;
+    private Long gameId;
+    private String content;
+    private LocalDateTime sentAt;
+}
+```
+
+
+**Class:** `RuleViolationReport`
 ```java
 public class RuleViolationReport {
     private Long id;
@@ -331,12 +267,8 @@ public class RuleViolationReport {
 }
 ```
 
-> **Why:** Optional feature for social rule enforcement (e.g., spam).
 
----
-
-## ✅ 17. Vote
-
+**Class:** `Vote`
 ```java
 public class Vote {
     private RuleViolationReport report;
@@ -345,20 +277,12 @@ public class Vote {
 }
 ```
 
-> **Why:** Part of voting system for reports.
 
----
-
-## 📃 18. CommunicationRules
-
+**Class:** `Card`
 ```java
-public class CommunicationRules {
-    private boolean chatAllowed;
-    private boolean privateAgreementsAllowed;
-
-    public boolean validate(ChatMessage msg);
+public class Card {
+    private Long id;
+    private Country country;
+    private CardType type;  // INFANTRY, CAVALRY, CANNON
 }
-```
-
-> **Why:** Allows enabling/disabling certain types of communication rules per game.
 ```
