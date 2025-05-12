@@ -3,7 +3,8 @@ package ar.edu.utn.frc.tup.piii.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "actions") public class Action { @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+@Table(name = "actions")
+public class Action { @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
 
     @Column(nullable = false)
     private String type;

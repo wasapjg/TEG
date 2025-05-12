@@ -3,7 +3,8 @@ package ar.edu.utn.frc.tup.piii.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "game_territories") @IdClass(GameTerritoryId.class) public class GameTerritory { @Id @ManyToOne @JoinColumn(name = "game_id") private Game game;
+@Table(name = "game_territories") @IdClass(GameTerritoryId.class)
+public class GameTerritory { @Id @ManyToOne @JoinColumn(name = "game_id") private Game game;
 
     @Id
     @ManyToOne

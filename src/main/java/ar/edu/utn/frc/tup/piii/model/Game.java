@@ -4,7 +4,8 @@ import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
-@Entity @Table(name = "games") public class Game { @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
+@Entity @Table(name = "games")
+public class Game { @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
 
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

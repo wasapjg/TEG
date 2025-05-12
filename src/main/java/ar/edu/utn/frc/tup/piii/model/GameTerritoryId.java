@@ -2,7 +2,9 @@ package ar.edu.utn.frc.tup.piii.model;
 
 import java.util.Objects;
 
-public class GameTerritoryId implements java.io.Serializable { private Long game; private Long country;
+public class GameTerritoryId implements java.io.Serializable {
+    private Long game;
+    private Long country;
 
     public GameTerritoryId() {}
 
