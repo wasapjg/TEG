@@ -1,5 +1,6 @@
 package ar.edu.utn.frc.tup.piii.model;
 
+import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import jakarta.persistence.*;
 
 @Entity @Table(name = "players") public class Player { @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
