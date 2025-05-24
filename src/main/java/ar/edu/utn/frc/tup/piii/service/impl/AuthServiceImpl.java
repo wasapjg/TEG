@@ -5,7 +5,7 @@ import ar.edu.utn.frc.tup.piii.dtos.common.UserLoginDto;
 import ar.edu.utn.frc.tup.piii.dtos.common.UserRegisterDto;
 import ar.edu.utn.frc.tup.piii.exception.InvalidCredentialsException;
 import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
-import ar.edu.utn.frc.tup.piii.model.User;
+import ar.edu.utn.frc.tup.piii.model.entity.User;
 import ar.edu.utn.frc.tup.piii.repository.UserRepository;
 import ar.edu.utn.frc.tup.piii.service.AuthService;
 import ar.edu.utn.frc.tup.piii.utils.JwtUtils;
@@ -31,7 +31,7 @@ public class AuthServiceImpl implements AuthService {
         }
         User u = new User();
         u.setUsername(dto.getUsername());
-        u.setPassword(encoder.encode(dto.getPassword()));
+        u.setPasswordHash(encoder.encode(dto.getPassword()));
         repo.save(u);
         String token = jwtUtils.generateToken(dto.getUsername());
         return new JwtResponseDto(token);
@@ -41,7 +41,7 @@ public class AuthServiceImpl implements AuthService {
     public JwtResponseDto login(UserLoginDto dto) {
         User u = repo.findUserByUsername(dto.getUsername())
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
-        if (!encoder.matches(dto.getPassword(), u.getPassword())){
+        if (!encoder.matches(dto.getPassword(), u.getPasswordHash())){
             throw new InvalidCredentialsException("Invalid Password");
         }
         String token = jwtUtils.generateToken(u.getUsername());

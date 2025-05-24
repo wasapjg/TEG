@@ -1,4 +1,4 @@
-package ar.edu.utn.frc.tup.piii.model;
+package ar.edu.utn.frc.tup.piii.model.entity;
 
 import jakarta.persistence.*;
 
