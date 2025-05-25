@@ -1,24 +1,27 @@
 package ar.edu.utn.frc.tup.piii.dtos.common;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class UserRegisterDto {
-    @NotBlank private String username;
-    @NotBlank private String password;
+    @NotBlank(message = "Username is required")
+    @Size(min = 3, max = 50, message = "Username must be between 3 and 50 characters")
+    private String username;
 
-    public @NotBlank String getUsername() {
-        return username;
-    }
+    @NotBlank(message = "Password is required")
+    @Size(min = 6, message = "Password must be at least 6 characters")
+    private String password;
 
-    public void setUsername(@NotBlank String username) {
-        this.username = username;
-    }
+    @Email(message = "Invalid email format")
+    @NotBlank(message = "Email is required")
+    private String email;
 
-    public @NotBlank String getPassword() {
-        return password;
-    }
-
-    public void setPassword(@NotBlank String password) {
-        this.password = password;
-    }
+    private String avatarUrl;
 }
