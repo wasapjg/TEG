@@ -7,7 +7,7 @@ import ar.edu.utn.frc.tup.piii.exception.InvalidCredentialsException;
 import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
 import ar.edu.utn.frc.tup.piii.model.entity.User;
 import ar.edu.utn.frc.tup.piii.repository.UserRepository;
-import ar.edu.utn.frc.tup.piii.service.AuthService;
+import ar.edu.utn.frc.tup.piii.service.interfaces.AuthService;
 import ar.edu.utn.frc.tup.piii.utils.JwtUtils;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;

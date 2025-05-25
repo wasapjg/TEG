@@ -1,8 +1,14 @@
 package ar.edu.utn.frc.tup.piii.model.entity;
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 @Table(name = "player_hands") public class PlayerHand { @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
 
     @ManyToOne
@@ -13,14 +19,16 @@ import jakarta.persistence.*;
     @JoinColumn(name = "card_id", nullable = false)
     private Card card;
 
-    public PlayerHand() {}
+    @Column(name = "quantity", nullable = false)
+    private Integer quantity;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Player getPlayer() { return player; }
-    public void setPlayer(Player player) { this.player = player; }
-    public Card getCard() { return card; }
-    public void setCard(Card card) { this.card = card; }
+    @PrePersist
+    @PreUpdate
+    protected void validateQuantity() {
+        if (quantity != null && quantity < 0) {
+            quantity = 0;
+        }
+    }
 
 }
 

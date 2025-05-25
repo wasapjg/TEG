@@ -1,4 +1,4 @@
-package ar.edu.utn.frc.tup.piii.service;
+package ar.edu.utn.frc.tup.piii.service.interfaces;
 
 import ar.edu.utn.frc.tup.piii.dtos.common.JwtResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.common.UserLoginDto;
