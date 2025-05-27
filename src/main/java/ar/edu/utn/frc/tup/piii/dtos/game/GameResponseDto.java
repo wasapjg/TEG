@@ -1,8 +1,10 @@
 package ar.edu.utn.frc.tup.piii.dtos.game;
 
+//import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
 import ar.edu.utn.frc.tup.piii.model.enums.GamePhase;
 import ar.edu.utn.frc.tup.piii.model.enums.GameStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,6 +32,7 @@ public class GameResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime startedAt;
     private LocalDateTime finishedAt;
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<PlayerResponseDto> players;
     private String currentPlayerName;
 }

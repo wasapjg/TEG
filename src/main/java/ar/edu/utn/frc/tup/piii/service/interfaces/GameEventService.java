@@ -1,6 +1,7 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 
-import ar.edu.utn.frc.tup.piii.dtos.event.GameEventDto;
+
+import ar.edu.utn.frc.tup.piii.dtos.game.GameEventDto;
 import ar.edu.utn.frc.tup.piii.model.entity.GameEvent;
 import ar.edu.utn.frc.tup.piii.model.entity.Game;
 import ar.edu.utn.frc.tup.piii.model.entity.Player;
@@ -33,7 +34,7 @@ public interface GameEventService {
     GameEvent recordTurnEnd(Game game, Player player);
 
     // Consultas específicas
-    List<GameEventDto> getGameHistory(Long gameId);
+    List<ar.edu.utn.frc.tup.piii.dtos.game.GameEventDto> getGameHistory(Long gameId);
     List<GameEventDto> getPlayerHistory(Long playerId);
     List<GameEventDto> getTurnHistory(Long gameId, int turnNumber);
     List<GameEventDto> getRecentEvents(Long gameId, int limit);
