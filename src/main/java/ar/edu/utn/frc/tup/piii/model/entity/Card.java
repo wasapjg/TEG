@@ -34,6 +34,10 @@ public class Card {
 
     @Column(name = "is_in_deck")
     private Boolean isInDeck = true;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deck_id")      // FK en la tabla cards
+    private Deck deck;
 }
 
 

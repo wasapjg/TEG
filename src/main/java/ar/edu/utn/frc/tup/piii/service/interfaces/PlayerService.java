@@ -21,7 +21,7 @@ public interface PlayerService {
     void deleteById(Long id);
 
     // Creación de jugadores
-    Player createHumanPlayer(User user, Game game);
+    Player createHumanPlayer(User user, Game game,int seatOrder);
     Player createBotPlayer(BotLevel botLevel, Game game);
 
     // Gestión de estado

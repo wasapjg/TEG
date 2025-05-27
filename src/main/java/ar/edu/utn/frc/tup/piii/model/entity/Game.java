@@ -1,5 +1,6 @@
 package ar.edu.utn.frc.tup.piii.model.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -67,14 +68,20 @@ public class Game {
     @Column(name = "last_modified")
     private LocalDateTime lastModified;
 
-    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToOne(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "deck_id")      // FK en la tabla games
+    private Deck deck;
+
+
+    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL)
+    @JsonManagedReference("game-players") // Anotación clave
     private List<Player> players = new ArrayList<>();
 
     @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<GameTerritory> gameterritories = new ArrayList<>();
 
-    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Card> deck = new ArrayList<>();
+//    @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+//    private List<Card> deck = new ArrayList<>();
 
     @OneToMany(mappedBy = "game", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<GameEvent> events = new ArrayList<>();

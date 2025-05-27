@@ -1,6 +1,8 @@
 package ar.edu.utn.frc.tup.piii.model.entity;
 
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 import lombok.Data;
@@ -23,21 +25,23 @@ public class Player {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private User user; // null if bot
+    @JsonIgnore // Evita serializar el usuario completo
+    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bot_profile_id")
     private BotProfile botProfile; // null if human
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id", nullable = false)
+    @JoinColumn(name = "game_id")
+    @JsonBackReference("game-players") // Anotación complementaria
     private Game game;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "objective_id")
     private Objective objective;
 
-    @Enumerated(EnumType.STRING)
+       @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PlayerStatus status = PlayerStatus.WAITING;
 
@@ -60,7 +64,7 @@ public class Player {
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Card> hand = new ArrayList<>();
 
-    @OneToMany(mappedBy = "player", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<GameTerritory> territories = new ArrayList<>();
 
     @PrePersist
@@ -69,6 +73,8 @@ public class Player {
             joinedAt = LocalDateTime.now();
         }
     }
+
+
 
     public boolean isEliminated() {
         return status == PlayerStatus.ELIMINATED;
@@ -89,4 +95,6 @@ public class Player {
             return botProfile.getBotName();
         }
     }
+
+
 }
