@@ -1,6 +1,7 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 
 import ar.edu.utn.frc.tup.piii.dtos.game.*;
+import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
 import ar.edu.utn.frc.tup.piii.model.entity.*;
 import ar.edu.utn.frc.tup.piii.model.enums.*;
 import ar.edu.utn.frc.tup.piii.repository.*;
@@ -161,40 +162,34 @@ public class GameServiceImpl implements GameService {
 
     @Override
     @Transactional
-    public GameResponseDto addBots(String gameCode, int count, BotLevel botLevel, BotStrategy botStrategy) {
+    public Game addBots(String gameCode, int count, String level, String strategy) {
         Game game = gameRepo.findByGameCode(gameCode)
-                .orElseThrow(() -> new IllegalStateException("Game not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Game not found with code: " + gameCode));
 
-        int currentPlayers = game.getPlayers().size();
-        if (currentPlayers + count > game.getMaxPlayers()) {
-            throw new IllegalStateException("Not enough space to add " + count + " bots");
-        }
+        BotLevel botLevel;
+        BotStrategy botStrategy;
 
-        BotProfile botProfile = BotProfile.create(botLevel, botStrategy);
-        botProfile = botProfileRepo.save(botProfile);
-
-        List<PlayerColor> availableColors = getAvailableColors(game);
-
-        if (availableColors.size() < count) {
-            throw new IllegalStateException("Not enough available colors for bots");
+        try {
+            botLevel = BotLevel.valueOf(level.toUpperCase());
+            botStrategy = BotStrategy.valueOf(strategy.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid bot level or strategy");
         }
 
         for (int i = 0; i < count; i++) {
+            BotProfile botProfile = BotProfile.create(botLevel, botStrategy);
+            botProfileRepo.save(botProfile);
+
             Player botPlayer = new Player();
-            botPlayer.setGame(game);
             botPlayer.setBotProfile(botProfile);
-            botPlayer.setUser(null);
-            botPlayer.setStatus(PlayerStatus.WAITING);
-            botPlayer.setColor(availableColors.get(i));
-            botPlayer.setSeatOrder(game.getPlayers().size() + 1 + i);
-            playerRepository.save(botPlayer);
+            botPlayer.setGame(game);
+            botPlayer.setStatus(PlayerStatus.ACTIVE);  // Suponiendo que tengas un enum así
             game.getPlayers().add(botPlayer);
         }
 
-        game = gameRepo.save(game);
-
-        return mapToGameResponseDto(game);
+        return gameRepo.save(game);
     }
+
 
     private GameResponseDto mapToGameResponseDto(Game game) {
         return GameResponseDto.builder()

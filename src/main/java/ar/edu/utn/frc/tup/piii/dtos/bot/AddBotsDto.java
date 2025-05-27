@@ -10,6 +10,6 @@ import lombok.NoArgsConstructor;
 public class AddBotsDto {
     private String gameCode;
     private Integer count;
-    private String botLevel;   // e.g. "EASY"
-    private String botStrategy; // e.g. "DEFENSIVE"
+    private String botLevel;     // e.g., "NOVICE"
+    private String botStrategy;  // e.g., "DEFENSIVE"
 }

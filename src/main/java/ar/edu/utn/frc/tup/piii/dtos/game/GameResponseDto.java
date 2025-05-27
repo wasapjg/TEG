@@ -2,6 +2,7 @@ package ar.edu.utn.frc.tup.piii.dtos.game;
 
 //import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
+import ar.edu.utn.frc.tup.piii.model.entity.Game;
 import ar.edu.utn.frc.tup.piii.model.enums.GamePhase;
 import ar.edu.utn.frc.tup.piii.model.enums.GameStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -12,6 +13,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Data
 @NoArgsConstructor
@@ -35,4 +37,32 @@ public class GameResponseDto {
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<PlayerResponseDto> players;
     private String currentPlayerName;
+
+    public static GameResponseDto fromEntity(Game game) {
+        return GameResponseDto.builder()
+                .id(game.getId())
+                .gameCode(game.getGameCode())
+                .createdByUsername(game.getCreatedBy().getUsername())
+                .status(game.getStatus())
+                .currentPhase(game.getCurrentPhase())
+                .currentTurn(game.getCurrentTurn())
+                .currentPlayerIndex(game.getCurrentPlayerIndex())
+                .maxPlayers(game.getMaxPlayers())
+                .turnTimeLimit(game.getTurnTimeLimit())
+                .chatEnabled(game.getChatEnabled())
+                .pactsAllowed(game.getPactsAllowed())
+                .createdAt(game.getCreatedAt())
+                .startedAt(game.getStartedAt())
+                .finishedAt(game.getFinishedAt())
+                .players(game.getPlayers().stream()
+                        .map(PlayerResponseDto::fromEntity)
+                        .collect(Collectors.toList()))
+                .currentPlayerName(
+                        game.getPlayers().size() > game.getCurrentPlayerIndex()
+                                ? PlayerResponseDto.fromEntity(game.getPlayers().get(game.getCurrentPlayerIndex())).getUsername()
+                                : null
+                )
+                .build();
+    }
+
 }

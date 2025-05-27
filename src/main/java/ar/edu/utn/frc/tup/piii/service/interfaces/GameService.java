@@ -35,7 +35,7 @@ public interface GameService {
     Game joinGame(String gameCode, Long userId);
 
 
-    Game addBots(String gameCode, int count, BotLevel botLevel, BotStrategy botStrategy);
+    Game addBots(String gameCode, int count, String level, String strategy);
 
     Game kickPlayer(String gameCode, Long playerId);
 

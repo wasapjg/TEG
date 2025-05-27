@@ -1,6 +1,7 @@
 package ar.edu.utn.frc.tup.piii.controllers;
 
 import ar.edu.utn.frc.tup.piii.dtos.bot.AddBotsDto;
+import ar.edu.utn.frc.tup.piii.dtos.bot.BotCreateDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.GameCreationDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.JoinGameDto;
@@ -52,35 +53,28 @@ public class GameController {
     @PostMapping("/bots")
     public ResponseEntity<?> addBots(@RequestBody AddBotsDto dto) {
         try {
-            if (dto.getGameCode() == null || dto.getGameCode().isEmpty()) {
-                return ResponseEntity.badRequest().body("Game code is required");
-            }
-            if (dto.getCount() == null || dto.getCount() <= 0) {
-                return ResponseEntity.badRequest().body("Count must be positive");
-            }
-            if (dto.getBotLevel() == null || dto.getBotStrategy() == null) {
-                return ResponseEntity.badRequest().body("Bot level and strategy are required");
-            }
+            Game game = gameService.addBots(
+                    dto.getGameCode(),
+                    dto.getCount(),
+                    dto.getBotLevel(),
+                    dto.getBotStrategy()
+            );
 
-            GameResponseDto response = gameService.addBots(dto.getGameCode(), dto.getCount(), dto.getBotLevel(), dto.getBotStrategy());
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(GameResponseDto.fromEntity(game));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error adding bots");
+            return ResponseEntity.internalServerError().body("Error interno");
         }
     }
 
 
-    // Método auxiliar para convertir String a enum ignorando case y espacios
-    private <E extends Enum<E>> E safeValueOf(Class<E> enumClass, String value) {
-        if (value == null) return null;
-        try {
-            return Enum.valueOf(enumClass, value.trim().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
+
+
+
 
 
     @PostMapping("/kick")
