@@ -2,6 +2,7 @@ package ar.edu.utn.frc.tup.piii.service.interfaces;
 
 import ar.edu.utn.frc.tup.piii.dtos.game.AttackDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.FortifyDto;
+import ar.edu.utn.frc.tup.piii.dtos.game.GameCreationDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.ReinforcementDto;
 import ar.edu.utn.frc.tup.piii.model.entity.*;
 import ar.edu.utn.frc.tup.piii.model.enums.BotLevel;
@@ -30,6 +31,9 @@ public interface GameService {
 
     // Creación y configuración
     Game createGame(GameCreationDto dto);
+
+    @Transactional
+    Game createGame(GameCreationDto requestDto);
 
     Game joinGame(String gameCode, Long userId);
 

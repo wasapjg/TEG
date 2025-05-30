@@ -4,6 +4,7 @@ import ar.edu.utn.frc.tup.piii.dtos.game.*;
 import ar.edu.utn.frc.tup.piii.model.entity.*;
 import ar.edu.utn.frc.tup.piii.model.enums.*;
 import ar.edu.utn.frc.tup.piii.repository.*;
+import ar.edu.utn.frc.tup.piii.dtos.game.*;
 import ar.edu.utn.frc.tup.piii.service.interfaces.*;
 import ar.edu.utn.frc.tup.piii.utils.CodeGenerator;
 import ar.edu.utn.frc.tup.piii.utils.ColorManager;
