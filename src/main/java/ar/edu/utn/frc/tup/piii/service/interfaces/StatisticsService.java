@@ -1,10 +1,8 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 
 import ar.edu.utn.frc.tup.piii.dtos.game.GameStatisticsDto;
-import ar.edu.utn.frc.tup.piii.dtos.user.UserStatsDto;
-import ar.edu.utn.frc.tup.piii.model.entity.Game;
-import ar.edu.utn.frc.tup.piii.model.entity.User;
-import ar.edu.utn.frc.tup.piii.model.entity.Player;
+import ar.edu.utn.frc.tup.piii.dtos.common.UserStatsDto;
+
 import java.util.Map;
 
 public interface StatisticsService {

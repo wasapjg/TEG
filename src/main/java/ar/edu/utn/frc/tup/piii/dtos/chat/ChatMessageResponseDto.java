@@ -1,5 +1,6 @@
 package ar.edu.utn.frc.tup.piii.dtos.chat;
 
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,6 +12,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+
 public class ChatMessageResponseDto {
     private Long id;
     private String senderName;

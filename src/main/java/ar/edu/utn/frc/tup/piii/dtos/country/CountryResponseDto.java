@@ -1,5 +1,4 @@
 package ar.edu.utn.frc.tup.piii.dtos.country;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

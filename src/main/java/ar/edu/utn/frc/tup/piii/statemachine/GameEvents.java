@@ -1,0 +1,21 @@
+package ar.edu.utn.frc.tup.piii.statemachine;
+
+public enum GameEvents {
+    PLAYER_JOINED,
+    GAME_STARTED,
+    COUNTRIES_DISTRIBUTED,
+    INITIAL_ARMIES_PLACED,
+    START_TURN,
+    REINFORCE,
+    START_ATTACK,
+    ATTACK_COMPLETED,
+    START_FORTIFY,
+    FORTIFY_COMPLETED,
+    END_TURN,
+    PLAYER_ELIMINATED,
+    OBJECTIVE_COMPLETED,
+    GAME_WON,
+    PAUSE_GAME,
+    RESUME_GAME,
+    TIMEOUT
+}

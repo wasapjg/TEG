@@ -18,5 +18,6 @@ public class BotCreateDto {
     private BotStrategy strategy;
 
     @NotNull(message = "Game ID is required")
-    private Long gameId;
+    private Long gameCode;
+
 }
