@@ -2,9 +2,9 @@ package ar.edu.utn.frc.tup.piii.service.interfaces;
 
 import ar.edu.utn.frc.tup.piii.dtos.card.CardResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.card.CardTradeDto;
-import ar.edu.utn.frc.tup.piii.model.entity.Card;
-import ar.edu.utn.frc.tup.piii.model.entity.Game;
-import ar.edu.utn.frc.tup.piii.model.entity.Player;
+import ar.edu.utn.frc.tup.piii.model.Card;
+import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.model.enums.CardType;
 import java.util.List;
 import java.util.Optional;
