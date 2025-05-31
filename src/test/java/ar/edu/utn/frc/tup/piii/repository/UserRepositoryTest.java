@@ -24,6 +24,7 @@ public class UserRepositoryTest {
 
     private UserEntity user1;
     private UserEntity user2;
+    private UserEntity inactiveUser;
 
     @BeforeEach
     void setUp() {
@@ -38,11 +39,19 @@ public class UserRepositoryTest {
         user2.setUsername("testuser2");
         user2.setEmail("test2@example.com");
         user2.setPasswordHash("hashedpassword2");
-        user2.setIsActive(false);
+        user2.setIsActive(true);
         user2.setCreatedAt(LocalDateTime.now());
+
+        inactiveUser = new UserEntity();
+        inactiveUser.setUsername("inactiveuser");
+        inactiveUser.setEmail("inactive@example.com");
+        inactiveUser.setPasswordHash("hashedpassword3");
+        inactiveUser.setIsActive(false);
+        inactiveUser.setCreatedAt(LocalDateTime.now());
 
         entityManager.persistAndFlush(user1);
         entityManager.persistAndFlush(user2);
+        entityManager.persistAndFlush(inactiveUser);
     }
 
     @Test
@@ -54,5 +63,81 @@ public class UserRepositoryTest {
         assertThat(found).isPresent();
         assertThat(found.get().getUsername()).isEqualTo("testuser1");
         assertThat(found.get().getEmail()).isEqualTo("test1@example.com");
+    }
+
+    @Test
+    void findByUsername_WhenUserNotExists_ShouldReturnEmpty() {
+        // When
+        Optional<UserEntity> found = userRepository.findByUsername("nonexistent");
+
+        // Then
+        assertThat(found).isEmpty();
+    }
+
+    @Test
+    void findByEmail_WhenEmailExists_ShouldReturnUser() {
+        // When
+        Optional<UserEntity> found = userRepository.findByEmail("test2@example.com");
+
+        // Then
+        assertThat(found).isPresent();
+        assertThat(found.get().getUsername()).isEqualTo("testuser2");
+    }
+
+    @Test
+    void findByEmail_WhenEmailNotExists_ShouldReturnEmpty() {
+        // When
+        Optional<UserEntity> found = userRepository.findByEmail("nonexistent@example.com");
+
+        // Then
+        assertThat(found).isEmpty();
+    }
+
+    @Test
+    void existsByUsername_WhenUserExists_ShouldReturnTrue() {
+        // When
+        boolean exists = userRepository.existsByUsername("testuser1");
+
+        // Then
+        assertThat(exists).isTrue();
+    }
+
+    @Test
+    void existsByUsername_WhenUserNotExists_ShouldReturnFalse() {
+        // When
+        boolean exists = userRepository.existsByUsername("nonexistent");
+
+        // Then
+        assertThat(exists).isFalse();
+    }
+
+    @Test
+    void existsByEmail_WhenEmailExists_ShouldReturnTrue() {
+        // When
+        boolean exists = userRepository.existsByEmail("test1@example.com");
+
+        // Then
+        assertThat(exists).isTrue();
+    }
+
+    @Test
+    void existsByEmail_WhenEmailNotExists_ShouldReturnFalse() {
+        // When
+        boolean exists = userRepository.existsByEmail("nonexistent@example.com");
+
+        // Then
+        assertThat(exists).isFalse();
+    }
+
+    @Test
+    void findByIsActiveTrue_ShouldReturnOnlyActiveUsers() {
+        // When
+        List<UserEntity> activeUsers = userRepository.findByIsActiveTrue();
+
+        // Then
+        assertThat(activeUsers).hasSize(2);
+        assertThat(activeUsers).extracting(UserEntity::getUsername)
+                .containsExactlyInAnyOrder("testuser1", "testuser2");
+        assertThat(activeUsers).allMatch(UserEntity::getIsActive);
     }
 }

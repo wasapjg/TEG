@@ -3,7 +3,9 @@ package ar.edu.utn.frc.tup.piii.service.impl;
 import ar.edu.utn.frc.tup.piii.dtos.common.JwtResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.user.UserLoginDto;
 import ar.edu.utn.frc.tup.piii.dtos.user.UserRegisterDto;
+import ar.edu.utn.frc.tup.piii.exception.EmailAlreadyExistsException;
 import ar.edu.utn.frc.tup.piii.exception.InvalidCredentialsException;
+import ar.edu.utn.frc.tup.piii.exception.UserAlreadyExistsException;
 import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
 import ar.edu.utn.frc.tup.piii.mappers.UserMapper;
 import ar.edu.utn.frc.tup.piii.model.User;
@@ -32,9 +34,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public JwtResponseDto register(UserRegisterDto dto) {
         if (repo.findByUsername(dto.getUsername()).isPresent()){
-            throw  new RuntimeException("This user already exist");
+            throw new UserAlreadyExistsException("Username already exists: " + dto.getUsername());
         }if (repo.findByEmail(dto.getEmail()).isPresent()){
-            throw  new RuntimeException("This email is already registered");
+            throw new EmailAlreadyExistsException("Email already registered: " + dto.getEmail());
         }
         User u = new User();
         u.setUsername(dto.getUsername());
