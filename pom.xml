@@ -121,6 +121,13 @@
             <version>6.4.4</version>
         </dependency>
 
+        <!--  Password Validation Library  -->
+        <dependency>
+            <groupId>org.passay</groupId>
+            <artifactId>passay</artifactId>
+            <version>1.6.4</version>
+        </dependency>
+
     </dependencies>
 
     <build>

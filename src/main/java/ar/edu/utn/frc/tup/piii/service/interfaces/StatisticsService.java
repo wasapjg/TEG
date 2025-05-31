@@ -1,7 +1,7 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 
 import ar.edu.utn.frc.tup.piii.dtos.game.GameStatisticsDto;
-import ar.edu.utn.frc.tup.piii.dtos.common.UserStatsDto;
+import ar.edu.utn.frc.tup.piii.dtos.user.UserStatsDto;
 
 import java.util.Map;
 

@@ -1,8 +1,8 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 
 import ar.edu.utn.frc.tup.piii.dtos.common.JwtResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.common.UserLoginDto;
-import ar.edu.utn.frc.tup.piii.dtos.common.UserRegisterDto;
+import ar.edu.utn.frc.tup.piii.dtos.user.UserLoginDto;
+import ar.edu.utn.frc.tup.piii.dtos.user.UserRegisterDto;
 import ar.edu.utn.frc.tup.piii.exception.InvalidCredentialsException;
 import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
 import ar.edu.utn.frc.tup.piii.model.entity.User;

@@ -1,4 +1,4 @@
-package ar.edu.utn.frc.tup.piii.dtos.common;
+package ar.edu.utn.frc.tup.piii.dtos.user;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;

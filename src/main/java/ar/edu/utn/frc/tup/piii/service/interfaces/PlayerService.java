@@ -1,12 +1,15 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 
-import ar.edu.utn.frc.tup.piii.model.entity.Player;
-import ar.edu.utn.frc.tup.piii.model.entity.User;
-import ar.edu.utn.frc.tup.piii.model.entity.Game;
-import ar.edu.utn.frc.tup.piii.model.entity.BotProfile;
-import ar.edu.utn.frc.tup.piii.model.entity.Objective;
+import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
+import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
+import ar.edu.utn.frc.tup.piii.entities.GameEntity;
+import ar.edu.utn.frc.tup.piii.entities.UserEntity;
+import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
+import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
 import ar.edu.utn.frc.tup.piii.model.enums.BotLevel;
+import ar.edu.utn.frc.tup.piii.model.enums.BotStrategy;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -16,33 +19,28 @@ public interface PlayerService {
     Player save(Player player);
     Optional<Player> findById(Long id);
     List<Player> findAll();
-    List<Player> findByGame(Game game);
-    List<Player> findActivePlayersByGame(Game game);
+    List<Player> findByGame(Long gameId);
+    List<Player> findActivePlayersByGame(Long gameId);
     void deleteById(Long id);
 
     // Creación de jugadores
-    Player createHumanPlayer(User user, Game game,int seatOrder);
-    Player createBotPlayer(BotLevel botLevel, Game game);
+    Player createHumanPlayer(UserEntity user, GameEntity game);
+    Player createBotPlayer(BotLevel level, BotStrategy strategy, GameEntity game);
 
     // Gestión de estado
-    void eliminatePlayer(Long playerId);
-    void activatePlayer(Long playerId);
     void updateStatus(Long playerId, PlayerStatus status);
-    boolean isEliminated(Long playerId);
-    boolean isActive(Long playerId);
+    void eliminatePlayer(Long playerId);
 
-    // Objetivos
-    void assignObjective(Long playerId, Objective objective);
-    boolean hasWon(Long playerId, Game game);
-    boolean hasAchievedObjective(Long playerId);
-
-    // Gestión de ejércitos
-    void addArmiesToPlace(Long playerId, int armies);
-    void removeArmiesToPlace(Long playerId, int armies);
-    int getArmiesToPlace(Long playerId);
+    // Asignaciones
+    PlayerColor assignAvailableColor(Long gameId);
+    Integer getNextSeatOrder(Long gameId);
 
     // Validaciones
-    boolean canPerformAction(Long playerId, Game game);
-    boolean isPlayerTurn(Long playerId, Game game);
-    boolean belongsToGame(Long playerId, Long gameId);
+    boolean canJoinGame(Long userId, Long gameId);
+    boolean isPlayerInGame(Long userId, Long gameId);
+
+    // Conversiones
+    PlayerResponseDto toResponseDto(Player player);
+    Player toModel(PlayerEntity entity);
+    PlayerEntity toEntity(Player model);
 }
