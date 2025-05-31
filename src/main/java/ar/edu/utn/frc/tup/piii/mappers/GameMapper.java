@@ -89,8 +89,6 @@ public class GameMapper {
                     .ownerId(entity.getOwner() != null ? entity.getOwner().getId() : null)
                     .ownerName(entity.getOwner() != null ? getPlayerDisplayName(entity.getOwner()) : null)
                     .armies(entity.getArmies())
-                    .positionX(entity.getCountry().getPositionX())
-                    .positionY(entity.getCountry().getPositionY())
                     .neighborIds(entity.getCountry().getNeighbors().stream()
                             .map(CountryEntity::getId)
                             .collect(Collectors.toSet()))

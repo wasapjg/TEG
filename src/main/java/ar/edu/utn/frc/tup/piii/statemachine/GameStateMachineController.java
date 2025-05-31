@@ -8,8 +8,12 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/games/{gameId}/state")
 public class GameStateMachineController {
 
+    private final GameStateMachineService gameStateMachineService;
+
     @Autowired
-    private GameStateMachineService gameStateMachineService;
+    public GameStateMachineController(GameStateMachineService gameStateMachineService) {
+        this.gameStateMachineService = gameStateMachineService;
+    }
 
     @PostMapping("/event/{event}")
     public void sendEvent(@PathVariable String gameId, @PathVariable GameEvents event) {
@@ -24,6 +28,6 @@ public class GameStateMachineController {
         StateMachine<GameStates, GameEvents> stateMachine =
                 gameStateMachineService.getStateMachine(gameId);
 
-        return stateMachine.getState().getId();
+        return stateMachine.getState() != null ? stateMachine.getState().getId() : null;
     }
 }

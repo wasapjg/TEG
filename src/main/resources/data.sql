@@ -1,178 +1,216 @@
 -- src/main/resources/data.sql
 -- Inicialización de datos para TEG
-
+use teg;
 -- Insertar continentes
 INSERT INTO continents (name, bonus_armies) VALUES
-                                                ('América del Norte', 5),
                                                 ('América del Sur', 3),
+                                                ('América del Norte', 5),
+                                                ('África', 3),
                                                 ('Europa', 5),
                                                 ('Asia', 7),
-                                                ('África', 3),
                                                 ('Oceanía', 2);
 
 -- Insertar países por continente
--- América del Norte
-INSERT INTO countries (name, continent_id, position_x, position_y) VALUES
-                                                                       ('Alaska', 1, 50, 100),
-                                                                       ('Territorio del Noroeste', 1, 120, 120),
-                                                                       ('Groenlandia', 1, 280, 80),
-                                                                       ('Alberta', 1, 120, 150),
-                                                                       ('Ontario', 1, 180, 170),
-                                                                       ('Quebec', 1, 220, 160),
-                                                                       ('Estados Unidos Occidentales', 1, 120, 200),
-                                                                       ('Estados Unidos Orientales', 1, 180, 220),
-                                                                       ('América Central', 1, 140, 280);
+-- América del Sur (ID_CONTINENTE = 1)
+INSERT INTO countries (name, continent_id) VALUES ('ARGENTINA', 1);
+INSERT INTO countries (name, continent_id) VALUES ('BRASIL', 1);
+INSERT INTO countries (name, continent_id) VALUES ('CHILE', 1);
+INSERT INTO countries (name, continent_id) VALUES ('URUGUAY', 1);
+INSERT INTO countries (name, continent_id) VALUES ('PERU', 1);
+INSERT INTO countries (name, continent_id) VALUES ('COLOMBIA', 1);
 
--- América del Sur
-INSERT INTO countries (name, continent_id, position_x, position_y) VALUES
-                                                                       ('Venezuela', 2, 200, 320),
-                                                                       ('Brasil', 2, 280, 380),
-                                                                       ('Perú', 2, 200, 400),
-                                                                       ('Argentina', 2, 220, 480);
+-- América del Norte (ID_CONTINENTE = 2)
+INSERT INTO countries (name, continent_id) VALUES ('MEXICO', 2);
+INSERT INTO countries (name, continent_id) VALUES ('CALIFORNIA', 2);
+INSERT INTO countries (name, continent_id) VALUES ('OREGON', 2);
+INSERT INTO countries (name, continent_id) VALUES ('NUEVA YORK', 2);
+INSERT INTO countries (name, continent_id) VALUES ('TERRANOVA', 2);
+INSERT INTO countries (name, continent_id) VALUES ('LABRADOR', 2);
+INSERT INTO countries (name, continent_id) VALUES ('GROENLANDIA', 2);
+INSERT INTO countries (name, continent_id) VALUES ('CANADA', 2);
+INSERT INTO countries (name, continent_id) VALUES ('ALASKA', 2);
+INSERT INTO countries (name, continent_id) VALUES ('YUKOM', 2);
 
+
+
+-- África (ID_CONTINENTE = 3)
+INSERT INTO countries (name, continent_id) VALUES ('SAHARA', 3);
+INSERT INTO countries (name, continent_id) VALUES ('ETIOPIA', 3);
+INSERT INTO countries (name, continent_id) VALUES ('EGIPTO', 3);
+INSERT INTO countries (name, continent_id) VALUES ('ZAIRE', 3);
+INSERT INTO countries (name, continent_id) VALUES ('SUDAFRICA', 3);
+INSERT INTO countries (name, continent_id) VALUES ('MADAGASCAR', 3);
+
+-- Europa (ID_CONTINENTE = 4)
+INSERT INTO countries (name, continent_id) VALUES ('ESPAÑA', 4);
+INSERT INTO countries (name, continent_id) VALUES ('ISLANDIA', 4);
+INSERT INTO countries (name, continent_id) VALUES ('FRANCIA', 4);
+INSERT INTO countries (name, continent_id) VALUES ('ITALIA', 4);
+INSERT INTO countries (name, continent_id) VALUES ('ALEMANIA', 4);
+INSERT INTO countries (name, continent_id) VALUES ('POLONIA', 4);
+INSERT INTO countries (name, continent_id) VALUES ('RUSIA', 4);
+INSERT INTO countries (name, continent_id) VALUES ('SUECIA', 4);
+INSERT INTO countries (name, continent_id) VALUES ('GRAN BRETAÑA', 4);
+
+
+-- Asia (ID_CONTINENTE = 5)
+INSERT INTO countries (name, continent_id) VALUES ('TURQUIA', 5);
+INSERT INTO countries (name, continent_id) VALUES ('ISRAEL', 5);
+INSERT INTO countries (name, continent_id) VALUES ('ARABIA', 5);
+INSERT INTO countries (name, continent_id) VALUES ('IRAN', 5);
+INSERT INTO countries (name, continent_id) VALUES ('INDIA', 5);
+INSERT INTO countries (name, continent_id) VALUES ('GOBI', 5);
+INSERT INTO countries (name, continent_id) VALUES ('MONGOLIA', 5);
+INSERT INTO countries (name, continent_id) VALUES ('CHINA', 5);
+INSERT INTO countries (name, continent_id) VALUES ('JAPON', 5);
+INSERT INTO countries (name, continent_id) VALUES ('SIBERIA', 5);
+INSERT INTO countries (name, continent_id) VALUES ('ARAL', 5);
+INSERT INTO countries (name, continent_id) VALUES ('TARTARIA', 5);
+INSERT INTO countries (name, continent_id) VALUES ('TAYMIR', 5);
+INSERT INTO countries (name, continent_id) VALUES ('KAMCHATKA', 5);
+INSERT INTO countries (name, continent_id) VALUES ('MALASIA', 5);
+
+-- Oceanía (ID_CONTINENTE = 6)
+INSERT INTO countries (name, continent_id) VALUES ('JAVA', 6);
+INSERT INTO countries (name, continent_id) VALUES ('AUSTRALIA', 6);
+INSERT INTO countries (name, continent_id) VALUES ('SUMATRA', 6);
+INSERT INTO countries (name, continent_id) VALUES ('BORNEO', 6);
+
+-- Insertar fronteras (relaciones de vecindad
+-- ARGENTINA (ID 1)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (1, 3); -- CHILE
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (1, 5); -- PERU
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (1, 4); -- URUGUAY
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (1, 2); -- BRASIL
+
+-- CHILE (ID 3)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (3, 32); -- AUSTRALIA
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (3, 5);  -- PERU
+
+-- URUGUAY (ID 4)
+-- Ya fue agregada la relación con ARGENTINA y BRASIL
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (4, 2); -- BRASIL
+
+-- PERU (ID 5)
+-- Ya fueron agregadas: ARGENTINA, CHILE
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (5, 6); -- COLOMBIA
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (5, 2); -- BRASIL
+
+-- COLOMBIA (ID 6)
+-- Ya fue agregada: PERU
+INSERT INTO PAISES_LIMITROFES (country_id, neighbor_id) VALUES (6, 11); -- MEXICO
+INSERT INTO PAISES_LIMITROFES (country_id, neighbor_id) VALUES (6, 2);  -- BRASIL
+
+-- BRASIL (ID 2)
+-- Ya fueron agregadas: URUGUAY, COLOMBIA, PERU, ARGENTINA
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (2, 17); -- SAHARA
+
+
+-- MEXICO (11)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (11, 12); -- CALIFORNIA
+
+-- CALIFORNIA (12)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (12, 13); -- OREGON
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (12, 14); -- NUEVA YORK
+
+-- OREGON (13)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (13, 14); -- NUEVA YORK
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (13, 19); -- ALASKA
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (13, 20); -- YUKON
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (13, 18); -- CANADA
+
+-- ALASKA (19)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (19, 28); -- KAMCHATKA
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (19, 20); -- YUKON
+
+-- YUKON (20)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (20, 18); -- CANADA
+
+-- CANADA (18)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (18, 14); -- NUEVA YORK
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (18, 15); -- TERRANOVA
+
+-- NUEVA YORK (14)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (14, 17); -- GROENLANDIA
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (14, 15); -- TERRANOVA
+
+-- TERRANOVA (15)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (15, 16); -- LABRADOR
+
+-- GROENLANDIA (17)
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (17, 16); -- LABRADOR
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (17, 22); -- ISLANDIA
 -- Europa
-INSERT INTO countries (name, continent_id, position_x, position_y) VALUES
-                                                                       ('Islandia', 3, 320, 120),
-                                                                       ('Gran Bretaña', 3, 340, 160),
-                                                                       ('Escandinavia', 3, 380, 100),
-                                                                       ('Rusia', 3, 420, 140),
-                                                                       ('Europa del Norte', 3, 380, 180),
-                                                                       ('Europa Occidental', 3, 340, 200),
-                                                                       ('Europa del Sur', 3, 380, 220);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (24, 31);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (24, 13);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (24, 30);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (30, 29);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (31, 23);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (31, 27);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (23, 25);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (23, 17);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (25, 27);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (25, 26);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (26, 27);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (27, 28);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (28, 29);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (28, 19);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (28, 32);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (29, 42);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (29, 35);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (29, 32);
+
+-- África
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (17, 2);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (17, 19);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (17, 18);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (17, 20);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (19, 18);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (19, 22);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (19, 32);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (19, 33);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (18, 20);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (18, 21);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (20, 21);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (20, 22);
 
 -- Asia
-INSERT INTO countries (name, continent_id, position_x, position_y) VALUES
-                                                                       ('Ural', 4, 460, 140),
-                                                                       ('Siberia', 4, 520, 120),
-                                                                       ('Yakutsk', 4, 580, 100),
-                                                                       ('Kamchatka', 4, 640, 120),
-                                                                       ('Irkutsk', 4, 580, 160),
-                                                                       ('Mongolia', 4, 580, 200),
-                                                                       ('Japón', 4, 660, 220),
-                                                                       ('Afganistán', 4, 480, 220),
-                                                                       ('China', 4, 560, 240),
-                                                                       ('Medio Oriente', 4, 440, 260),
-                                                                       ('India', 4, 520, 280),
-                                                                       ('Siam', 4, 580, 300);
-
--- África
-INSERT INTO countries (name, continent_id, position_x, position_y) VALUES
-                                                                       ('Egipto', 5, 400, 300),
-                                                                       ('África del Norte', 5, 360, 320),
-                                                                       ('África Oriental', 5, 440, 360),
-                                                                       ('Congo', 5, 400, 380),
-                                                                       ('África del Sur', 5, 420, 440),
-                                                                       ('Madagascar', 5, 480, 460);
-
--- Oceanía
-INSERT INTO countries (name, continent_id, position_x, position_y) VALUES
-                                                                       ('Indonesia', 6, 600, 360),
-                                                                       ('Nueva Guinea', 6, 660, 380),
-                                                                       ('Australia Occidental', 6, 640, 440),
-                                                                       ('Australia Oriental', 6, 700, 460);
-
--- Insertar fronteras (relaciones de vecindad)
--- América del Norte
-INSERT INTO country_neighbors (country_id, neighbor_id) VALUES
--- Alaska
-(1, 2), (1, 4), (1, 21), -- Alaska conecta con Territorio del Noroeste, Alberta, Kamchatka
--- Territorio del Noroeste
-(2, 1), (2, 3), (2, 4), (2, 5), -- conecta con Alaska, Groenlandia, Alberta, Ontario
--- Groenlandia
-(3, 2), (3, 5), (3, 6), (3, 12), -- conecta con Territorio del Noroeste, Ontario, Quebec, Islandia
--- Alberta
-(4, 1), (4, 2), (4, 5), (4, 7), -- conecta con Alaska, Territorio del Noroeste, Ontario, Estados Unidos Occidentales
--- Ontario
-(5, 2), (5, 3), (5, 4), (5, 6), (5, 7), (5, 8), -- conecta con múltiples países
--- Quebec
-(6, 3), (6, 5), (6, 8), -- conecta con Groenlandia, Ontario, Estados Unidos Orientales
--- Estados Unidos Occidentales
-(7, 4), (7, 5), (7, 8), (7, 9), -- conecta con Alberta, Ontario, Estados Unidos Orientales, América Central
--- Estados Unidos Orientales
-(8, 5), (8, 6), (8, 7), (8, 9), -- conecta con Ontario, Quebec, Estados Unidos Occidentales, América Central
--- América Central
-(9, 7), (9, 8), (9, 10); -- conecta con Estados Unidos Occidentales, Estados Unidos Orientales, Venezuela
-
--- América del Sur
-INSERT INTO country_neighbors (country_id, neighbor_id) VALUES
--- Venezuela
-(10, 9), (10, 11), (10, 12), -- conecta con América Central, Brasil, Perú
--- Brasil
-(11, 10), (11, 12), (11, 13), (11, 35), -- conecta con Venezuela, Perú, Argentina, África del Norte
--- Perú
-(12, 10), (12, 11), (12, 13), -- conecta con Venezuela, Brasil, Argentina
--- Argentina
-(13, 11), (13, 12); -- conecta con Brasil, Perú
-
--- Europa
-INSERT INTO country_neighbors (country_id, neighbor_id) VALUES
--- Islandia
-(14, 3), (14, 15), (14, 16), -- conecta con Groenlandia, Gran Bretaña, Escandinavia
--- Gran Bretaña
-(15, 14), (15, 16), (15, 17), (15, 19), -- conecta con Islandia, Escandinavia, Rusia, Europa del Norte, Europa Occidental
--- Escandinavia
-(16, 14), (16, 15), (16, 17), (16, 19), -- conecta con Islandia, Gran Bretaña, Rusia, Europa del Norte
--- Rusia
-(17, 15), (17, 16), (17, 19), (17, 20), (17, 22), (17, 29), -- conecta con múltiples países incluyendo Ural
--- Europa del Norte
-(19, 15), (19, 16), (19, 17), (19, 20), (19, 21), -- conecta con varios países europeos
--- Europa Occidental
-(20, 19), (20, 21), (20, 35), -- conecta con Europa del Norte, Europa del Sur, África del Norte
--- Europa del Sur
-(21, 17), (21, 19), (21, 20), (21, 32), (21, 34), (21, 35); -- conecta con varios países
-
--- Asia (continuando con las conexiones)
-INSERT INTO country_neighbors (country_id, neighbor_id) VALUES
--- Ural
-(22, 17), (22, 23), (22, 29), (22, 24), -- conecta con Rusia, Siberia, Afganistán, China
--- Siberia
-(23, 22), (23, 24), (23, 25), (23, 26), -- conecta con Ural, Yakutsk, Kamchatka, Irkutsk
--- Yakutsk
-(24, 23), (24, 25), (24, 26), -- conecta con Siberia, Kamchatka, Irkutsk
--- Kamchatka
-(25, 1), (25, 23), (25, 24), (25, 26), (25, 27), (25, 28), -- conecta con Alaska, Siberia, Yakutsk, Irkutsk, Mongolia, Japón
--- Irkutsk
-(26, 23), (26, 24), (26, 25), (26, 27), (26, 28), -- conecta con Siberia, Yakutsk, Kamchatka, Mongolia
--- Mongolia
-(27, 25), (27, 26), (27, 28), (27, 30), -- conecta con Kamchatka, Irkutsk, Japón, China
--- Japón
-(28, 25), (28, 27), (28, 30), -- conecta con Kamchatka, Mongolia, China
--- Afganistán
-(29, 17), (29, 22), (29, 30), (29, 32), (29, 33), -- conecta con Rusia, Ural, China, Medio Oriente, India
--- China
-(30, 22), (30, 27), (30, 28), (30, 29), (30, 33), (30, 34), -- conecta con múltiples países
--- Medio Oriente
-(32, 21), (32, 29), (32, 33), (32, 36), (32, 37), -- conecta con Europa del Sur, Afganistán, India, Egipto, África Oriental
--- India
-(33, 29), (33, 30), (33, 32), (33, 34), -- conecta con Afganistán, China, Medio Oriente, Siam
--- Siam
-(34, 30), (34, 33), (34, 43); -- conecta con China, India, Indonesia
-
--- África
-INSERT INTO country_neighbors (country_id, neighbor_id) VALUES
--- Egipto
-(36, 21), (36, 32), (36, 35), (36, 37), -- conecta con Europa del Sur, Medio Oriente, África del Norte, África Oriental
--- África del Norte
-(35, 11), (35, 20), (35, 21), (35, 36), (35, 38), (35, 39), -- conecta con Brasil, Europa Occidental, Europa del Sur, Egipto, África Oriental, Congo
--- África Oriental
-(37, 32), (37, 36), (37, 35), (37, 38), (37, 39), (37, 40), (37, 41), -- conecta con múltiples países africanos
--- Congo
-(38, 35), (38, 37), (38, 40), -- conecta con África del Norte, África Oriental, África del Sur
--- África del Sur
-(40, 37), (40, 38), (40, 41), -- conecta con África Oriental, Congo, Madagascar
--- Madagascar
-(41, 37), (41, 40); -- conecta con África Oriental, África del Sur
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (43, 42);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (43, 44);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (42, 35);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (42, 41);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (42, 38);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (44, 41);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (41, 43);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (41, 45);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (41, 38);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (41, 39);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (45, 39);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (45, 40);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (45, 15);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (40, 39);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (38, 39);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (38, 37);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (38, 35);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (39, 37);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (39, 35);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (39, 36);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (39, 46);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (37, 35);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (35, 32);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (35, 36);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (32, 33);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (32, 34);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (33, 34);
 
 -- Oceanía
-INSERT INTO country_neighbors (country_id, neighbor_id) VALUES
--- Indonesia
-(43, 34), (43, 44), (43, 45), -- conecta con Siam, Nueva Guinea, Australia Occidental
--- Nueva Guinea
-(44, 43), (44, 45), (44, 46), -- conecta con Indonesia, Australia Occidental, Australia Oriental
--- Australia Occidental
-(45, 43), (45, 44), (45, 46), -- conecta con Indonesia, Nueva Guinea, Australia Oriental
--- Australia Oriental
-(46, 44), (46, 45); -- conecta con Nueva Guinea, Australia Occidental
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (36, 49);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (46, 36);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (46, 50);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (49, 48);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (50, 48);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (47, 48);
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (48, 3);
 
 -- Insertar objetivos secretos
 INSERT INTO objectives (type, description, target_data, is_common) VALUES

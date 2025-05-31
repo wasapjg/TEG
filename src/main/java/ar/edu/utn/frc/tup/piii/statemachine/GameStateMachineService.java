@@ -14,107 +14,146 @@ import org.springframework.stereotype.Service;
 @Slf4j
 public class GameStateMachineService {
 
-    @Autowired
-    private StateMachineService<GameStates, GameEvents> stateMachineService;
+    private final StateMachineService<GameStates, GameEvents> stateMachineService;
 
+    @Autowired
+    public GameStateMachineService(StateMachineService<GameStates, GameEvents> stateMachineService) {
+        this.stateMachineService = stateMachineService;
+    }
+
+    // Método para obtener una state machine para un juego específico
+    public StateMachine<GameStates, GameEvents> getStateMachine(String gameId) {
+        return stateMachineService.acquireStateMachine(gameId, true);
+    }
+
+    // Método para liberar una state machine
+    public void releaseStateMachine(String gameId) {
+        stateMachineService.releaseStateMachine(gameId);
+    }
+
+    // Métodos de acción para las transiciones
     public void onGameStart(StateContext<GameStates, GameEvents> context) {
         log.info("Iniciando juego - distribuyendo países");
         Game game = getGameFromContext(context);
-        game.setStatus(GameStatus.IN_PROGRESS);
-        game.setCurrentPhase(GamePhase.SETUP);
-        // Lógica para distribuir países
+        if (game != null) {
+            game.setStatus(GameStatus.IN_PROGRESS);
+            game.setCurrentPhase(GamePhase.SETUP);
+        }
     }
 
     public void onCountriesDistributed(StateContext<GameStates, GameEvents> context) {
         log.info("Países distribuidos - iniciando colocación inicial de ejércitos");
         Game game = getGameFromContext(context);
-        // Lógica para colocación inicial de ejércitos
+        if (game != null) {
+            // Lógica para colocación inicial de ejércitos
+        }
     }
 
     public void onInitialArmiesPlaced(StateContext<GameStates, GameEvents> context) {
         log.info("Ejércitos iniciales colocados - iniciando primer turno");
         Game game = getGameFromContext(context);
-        game.setCurrentPhase(GamePhase.REINFORCEMENT);
-        // Preparar primer turno
+        if (game != null) {
+            game.setCurrentPhase(GamePhase.REINFORCEMENT);
+        }
     }
 
     public void onTurnStart(StateContext<GameStates, GameEvents> context) {
         log.info("Iniciando turno");
         Game game = getGameFromContext(context);
-        game.setCurrentPhase(GamePhase.REINFORCEMENT);
-        Player currentPlayer = game.getCurrentPlayer();
-        // Calcular ejércitos de refuerzo
-        int reinforcements = calculateReinforcements(game, currentPlayer);
-        currentPlayer.setArmiesToPlace(reinforcements);
+        if (game != null) {
+            game.setCurrentPhase(GamePhase.REINFORCEMENT);
+            Player currentPlayer = game.getCurrentPlayer();
+            if (currentPlayer != null) {
+                // Calcular ejércitos de refuerzo
+                int reinforcements = calculateReinforcements(game, currentPlayer);
+                currentPlayer.setArmiesToPlace(reinforcements);
+            }
+        }
     }
 
     public void onReinforcement(StateContext<GameStates, GameEvents> context) {
         log.info("Fase de refuerzos completada - iniciando fase de ataque");
         Game game = getGameFromContext(context);
-        game.setCurrentPhase(GamePhase.ATTACK);
+        if (game != null) {
+            game.setCurrentPhase(GamePhase.ATTACK);
+        }
     }
 
     public void onAttackCompleted(StateContext<GameStates, GameEvents> context) {
         log.info("Fase de ataque completada - iniciando fase de reagrupación");
         Game game = getGameFromContext(context);
-        game.setCurrentPhase(GamePhase.FORTIFY);
+        if (game != null) {
+            game.setCurrentPhase(GamePhase.FORTIFY);
+        }
     }
 
     public void onFortifyCompleted(StateContext<GameStates, GameEvents> context) {
         log.info("Fase de reagrupación completada - finalizando turno");
         Game game = getGameFromContext(context);
-        game.setCurrentPhase(GamePhase.END_TURN);
+        if (game != null) {
+            game.setCurrentPhase(GamePhase.END_TURN);
+        }
     }
 
     public void onNextTurn(StateContext<GameStates, GameEvents> context) {
         log.info("Iniciando siguiente turno");
         Game game = getGameFromContext(context);
-        game.nextPlayer();
-        game.nextTurn();
-        game.setCurrentPhase(GamePhase.REINFORCEMENT);
+        if (game != null) {
+            game.nextPlayer();
+            game.nextTurn();
+            game.setCurrentPhase(GamePhase.REINFORCEMENT);
+        }
     }
 
     public void onGameWon(StateContext<GameStates, GameEvents> context) {
         log.info("Juego terminado - hay un ganador");
         Game game = getGameFromContext(context);
-        game.setStatus(GameStatus.FINISHED);
-        // Lógica para determinar ganador y actualizar estadísticas
+        if (game != null) {
+            game.setStatus(GameStatus.FINISHED);
+        }
     }
 
     public void onGamePaused(StateContext<GameStates, GameEvents> context) {
         log.info("Juego pausado");
         Game game = getGameFromContext(context);
-        game.setStatus(GameStatus.PAUSED);
+        if (game != null) {
+            game.setStatus(GameStatus.PAUSED);
+        }
     }
 
     public void onGameResumed(StateContext<GameStates, GameEvents> context) {
         log.info("Juego reanudado");
         Game game = getGameFromContext(context);
-        game.setStatus(GameStatus.IN_PROGRESS);
+        if (game != null) {
+            game.setStatus(GameStatus.IN_PROGRESS);
+        }
     }
 
     public void onTimeout(StateContext<GameStates, GameEvents> context) {
         log.info("Timeout - avanzando automáticamente de fase");
         Game game = getGameFromContext(context);
-        Player currentPlayer = game.getCurrentPlayer();
-
-        switch (game.getCurrentPhase()) {
-            case REINFORCEMENT:
-                // Colocar ejércitos aleatoriamente
-                autoPlaceReinforcements(game, currentPlayer);
-                break;
-            case ATTACK:
-                // No hacer nada, pasar a siguiente fase
-                break;
-            case FORTIFY:
-                // No reagrupar
-                break;
+        if (game != null) {
+            Player currentPlayer = game.getCurrentPlayer();
+            if (currentPlayer != null) {
+                switch (game.getCurrentPhase()) {
+                    case REINFORCEMENT:
+                        autoPlaceReinforcements(game, currentPlayer);
+                        break;
+                    case ATTACK:
+                        // No hacer nada, pasar a siguiente fase
+                        break;
+                    case FORTIFY:
+                        // No reagrupar
+                        break;
+                }
+            }
         }
     }
 
     private Game getGameFromContext(StateContext<GameStates, GameEvents> context) {
-        // Obtener el juego del contexto o mediante algún identificador
-        return (Game) context.getExtendedState().getVariables().get("game");
+        // Obtener el juego del contexto
+        Object game = context.getExtendedState().getVariables().get("game");
+        return game instanceof Game ? (Game) game : null;
     }
 
     private int calculateReinforcements(Game game, Player player) {
@@ -135,13 +174,5 @@ public class GameStateMachineService {
     private void autoPlaceReinforcements(Game game, Player player) {
         // TODO colocación automática de ejércitos
         log.info("Colocando ejércitos automáticamente para {}", player.getDisplayName());
-    }
-
-    public StateMachine<GameStates, GameEvents> getStateMachine(String gameId) {
-        return stateMachineService.acquireStateMachine(gameId);
-    }
-
-    public void releaseStateMachine(String gameId) {
-        stateMachineService.releaseStateMachine(gameId);
     }
 }
