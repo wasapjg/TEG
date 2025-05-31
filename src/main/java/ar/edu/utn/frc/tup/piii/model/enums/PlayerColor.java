@@ -1,7 +1,7 @@
 package ar.edu.utn.frc.tup.piii.model.enums;
 
-import ar.edu.utn.frc.tup.piii.model.entity.Game;
-import ar.edu.utn.frc.tup.piii.model.entity.Player;
+import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.model.Player;
 
 import java.util.*;
 import java.util.stream.Collectors;

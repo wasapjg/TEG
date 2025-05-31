@@ -31,10 +31,4 @@ public class CountryEntity {
             inverseJoinColumns = @JoinColumn(name = "neighbor_id")
     )
     private Set<CountryEntity> neighbors = new HashSet<>();
-
-    @Column(name = "position_x")
-    private Double positionX;
-
-    @Column(name = "position_y")
-    private Double positionY;
 }

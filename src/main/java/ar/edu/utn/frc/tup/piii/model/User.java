@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -12,10 +14,8 @@ import lombok.NoArgsConstructor;
 public class User {
     private Long id;
     private String username;
-    private String password;
+    private String passwordHash;
     private String email;
     private String avatarUrl;
-    private boolean isActive;
-    private String createdAt;
-    private String updatedAt;
+    private LocalDateTime lastLogin;
 }

@@ -2,8 +2,6 @@ package ar.edu.utn.frc.tup.piii.repository;
 
 import ar.edu.utn.frc.tup.piii.entities.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -16,7 +14,4 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
     List<UserEntity> findByIsActiveTrue();
-
-    @Query("SELECT u FROM UserEntity u WHERE u.isActive = true AND u.username LIKE %:searchTerm%")
-    List<UserEntity> findActiveUsersByUsernameContaining(@Param("searchTerm") String searchTerm);
 }

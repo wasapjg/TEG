@@ -1,32 +1,17 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 
+import ar.edu.utn.frc.tup.piii.dtos.user.UserLoginDto;
 import ar.edu.utn.frc.tup.piii.dtos.user.UserRegisterDto;
 import ar.edu.utn.frc.tup.piii.dtos.user.UserUpdateDto;
-import ar.edu.utn.frc.tup.piii.dtos.user.UserResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.user.UserStatsDto;
-import ar.edu.utn.frc.tup.piii.entities.UserEntity;
-import ar.edu.utn.frc.tup.piii.repository.UserRepository;
-
+import ar.edu.utn.frc.tup.piii.model.User;
 import java.util.List;
 import java.util.Optional;
 
-public interface UserService extends UserRepository {
+public interface UserService {
 
-    UserResponseDto registerUser(UserRegisterDto userRegisterDto);
+    User registerUser(UserRegisterDto userRegisterDto);
+    User getUserById(Long userId);
+    User getUserByUserName(String username);
 
-    UserResponseDto updateUser(Long userId, UserUpdateDto userUpdateDto);
-
-    Optional<UserEntity> findByUsername(String username);
-
-    Optional<UserEntity> findByEmail(String email);
-
-    boolean existsByUsername(String username);
-
-    boolean existsByEmail(String email);
-
-    List<UserResponseDto> findActiveUsers();
-
-    List<UserResponseDto> searchActiveUsersByUsername(String searchTerm);
-
-    UserStatsDto getUserStats(Long userId);
+    List<User> getAllUsers();
 }
