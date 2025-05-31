@@ -3,10 +3,7 @@ package ar.edu.utn.frc.tup.piii.controllers;
 import ar.edu.utn.frc.tup.piii.dtos.common.ErrorApi;
 import ar.edu.utn.frc.tup.piii.dtos.common.FieldErrorDto;
 import ar.edu.utn.frc.tup.piii.dtos.common.ValidationErrorResponseDto;
-import ar.edu.utn.frc.tup.piii.exception.EmailAlreadyExistsException;
-import ar.edu.utn.frc.tup.piii.exception.InvalidCredentialsException;
-import ar.edu.utn.frc.tup.piii.exception.UserAlreadyExistsException;
-import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
+import ar.edu.utn.frc.tup.piii.exception.*;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -103,6 +100,17 @@ public class GlobalExceptionHandler {
                 .message(ex.getMessage())
                 .build();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorApi);
+    }
+
+    @ExceptionHandler(GameNotFoundException.class)
+    public ResponseEntity<ErrorApi> handleGameNotFound(GameNotFoundException ex) {
+        ErrorApi errorApi = ErrorApi.builder()
+                .timestamp(String.valueOf(System.currentTimeMillis()))
+                .status(HttpStatus.NOT_FOUND.value())
+                .error("Not Found")
+                .message(ex.getMessage())
+                .build();
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorApi);
     }
 
 }

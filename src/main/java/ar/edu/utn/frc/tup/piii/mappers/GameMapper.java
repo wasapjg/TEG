@@ -29,7 +29,7 @@ public class GameMapper {
                 .id(entity.getId())
                 .gameCode(entity.getGameCode())
                 .createdByUsername(entity.getCreatedBy() != null ? entity.getCreatedBy().getUsername() : null)
-                .status(entity.getStatus())
+                .state(entity.getStatus())
                 .currentPhase(entity.getCurrentPhase())
                 .currentTurn(entity.getCurrentTurn())
                 .currentPlayerIndex(entity.getCurrentPlayerIndex())
@@ -63,7 +63,7 @@ public class GameMapper {
         GameEntity entity = new GameEntity();
         entity.setId(model.getId());
         entity.setGameCode(model.getGameCode());
-        entity.setStatus(model.getStatus());
+        entity.setStatus(model.getState());
         entity.setCurrentPhase(model.getCurrentPhase());
         entity.setCurrentTurn(model.getCurrentTurn());
         entity.setCurrentPlayerIndex(model.getCurrentPlayerIndex());

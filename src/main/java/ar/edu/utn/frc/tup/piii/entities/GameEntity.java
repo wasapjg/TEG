@@ -1,7 +1,7 @@
 package ar.edu.utn.frc.tup.piii.entities;
 
-import ar.edu.utn.frc.tup.piii.model.enums.GameStatus;
-import ar.edu.utn.frc.tup.piii.model.enums.GamePhase;
+import ar.edu.utn.frc.tup.piii.model.enums.GameState;
+import ar.edu.utn.frc.tup.piii.model.enums.TurnPhase;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -30,11 +30,11 @@ public class GameEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private GameStatus status = GameStatus.WAITING_FOR_PLAYERS;
+    private GameState status = GameState.WAITING_FOR_PLAYERS;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "current_phase")
-    private GamePhase currentPhase;
+    private TurnPhase currentPhase;
 
     @Column(name = "current_turn")
     private Integer currentTurn = 0;

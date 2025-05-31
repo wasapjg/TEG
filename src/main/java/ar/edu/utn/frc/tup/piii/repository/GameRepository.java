@@ -2,7 +2,7 @@ package ar.edu.utn.frc.tup.piii.repository;
 
 import ar.edu.utn.frc.tup.piii.entities.GameEntity;
 import ar.edu.utn.frc.tup.piii.entities.UserEntity;
-import ar.edu.utn.frc.tup.piii.model.enums.GameStatus;
+import ar.edu.utn.frc.tup.piii.model.enums.GameState;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -15,11 +15,11 @@ import java.util.Optional;
 @Repository
 public interface GameRepository extends JpaRepository<GameEntity, Long> {
     Optional<GameEntity> findByGameCode(String gameCode);
-    List<GameEntity> findByStatus(GameStatus status);
+    List<GameEntity> findByStatus(GameState status);
     List<GameEntity> findByCreatedBy(UserEntity createdBy);
 
     @Query("SELECT g FROM GameEntity g WHERE g.status IN :statuses")
-    List<GameEntity> findByStatusIn(@Param("statuses") List<GameStatus> statuses);
+    List<GameEntity> findByStatusIn(@Param("statuses") List<GameState> statuses);
 
     @Query("SELECT g FROM GameEntity g WHERE g.status = 'WAITING_FOR_PLAYERS' AND SIZE(g.players) < g.maxPlayers")
     List<GameEntity> findAvailableGames();

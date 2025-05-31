@@ -1,7 +1,7 @@
 package ar.edu.utn.frc.tup.piii.model;
 
-import ar.edu.utn.frc.tup.piii.model.enums.GameStatus;
-import ar.edu.utn.frc.tup.piii.model.enums.GamePhase;
+import ar.edu.utn.frc.tup.piii.model.enums.GameState;
+import ar.edu.utn.frc.tup.piii.model.enums.TurnPhase;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -18,8 +18,8 @@ public class Game {
     private Long id;
     private String gameCode;
     private String createdByUsername;
-    private GameStatus status;
-    private GamePhase currentPhase;
+    private GameState state;
+    private TurnPhase currentPhase;
     private Integer currentTurn;
     private Integer currentPlayerIndex;
     private Integer maxPlayers;
@@ -52,7 +52,7 @@ public class Game {
     }
 
     public boolean isOver() {
-        return status == GameStatus.FINISHED || status == GameStatus.CANCELLED;
+        return state == GameState.FINISHED;
     }
 
     public Player getCurrentPlayer() {
@@ -74,6 +74,6 @@ public class Game {
     }
 
     public boolean canStart() {
-        return players.size() >= 2 && status == GameStatus.WAITING_FOR_PLAYERS;
+        return players.size() >= 2 && state == GameState.WAITING_FOR_PLAYERS;
     }
 }
