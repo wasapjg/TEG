@@ -9,9 +9,16 @@ import java.util.Optional;
 
 public interface UserService {
 
-    User registerUser(UserRegisterDto userRegisterDto);
     User getUserById(Long userId);
     User getUserByUserName(String username);
+    Boolean existsByUserName(String username);
+    Boolean existsByEmail(String email);
 
     List<User> getAllUsers();
+
+    User getUserByUserNameAndPasswordHash(String userName, String password);
+
+    void save(User user);
+
+    User getUserByEmailAndPasswordHash(String email, String password);
 }

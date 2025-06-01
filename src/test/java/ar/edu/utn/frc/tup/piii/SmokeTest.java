@@ -145,9 +145,9 @@ class SmokeTest {
 
     @Test
     void utilityBeansAreLoaded() {
-        // Verifica que las utilidades están cargadas
+        // Verifica que las utilidades están cargadas (sin jwtUtils)
         assertThat(applicationContext.containsBean("codeGenerator")).isTrue();
         assertThat(applicationContext.containsBean("colorManager")).isTrue();
-        assertThat(applicationContext.containsBean("jwtUtils")).isTrue();
+        // jwtUtils eliminado ya que no se usa JWT
     }
 }
