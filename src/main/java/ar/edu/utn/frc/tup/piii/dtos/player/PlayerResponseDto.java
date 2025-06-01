@@ -1,6 +1,7 @@
 
 package ar.edu.utn.frc.tup.piii.dtos.player;
 
+import ar.edu.utn.frc.tup.piii.model.entity.Player;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import lombok.AllArgsConstructor;
@@ -21,7 +22,7 @@ public class PlayerResponseDto {
     private String status;
     private String color;
 
-}
+
 public static PlayerResponseDto fromEntity(Player player) {
     String username = player.getUser() != null
             ? player.getUser().getUsername()
@@ -37,3 +38,4 @@ public static PlayerResponseDto fromEntity(Player player) {
             .build();
 }
 
+}

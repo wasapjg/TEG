@@ -1,8 +1,6 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 
-import ar.edu.utn.frc.tup.piii.dtos.game.AttackDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.FortifyDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.ReinforcementDto;
+import ar.edu.utn.frc.tup.piii.dtos.game.*;
 import ar.edu.utn.frc.tup.piii.model.entity.*;
 import ar.edu.utn.frc.tup.piii.model.enums.BotLevel;
 import ar.edu.utn.frc.tup.piii.model.enums.BotStrategy;
@@ -34,7 +32,7 @@ public interface GameService {
     Game joinGame(String gameCode, Long userId);
 
 
-    Game addBots(String gameCode, int count, BotLevel botLevel, BotStrategy botStrategy);
+    public GameResponseDto addBots(String gameCode, int count, BotLevel botLevel, BotStrategy botStrategy);
 
     Game kickPlayer(String gameCode, Long playerId);
 

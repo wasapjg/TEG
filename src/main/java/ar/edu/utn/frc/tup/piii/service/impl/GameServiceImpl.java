@@ -1,6 +1,7 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 
 import ar.edu.utn.frc.tup.piii.dtos.game.*;
+import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
 import ar.edu.utn.frc.tup.piii.model.entity.*;
 import ar.edu.utn.frc.tup.piii.model.enums.*;
 import ar.edu.utn.frc.tup.piii.repository.*;
