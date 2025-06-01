@@ -1,5 +1,6 @@
 package ar.edu.utn.frc.tup.piii.mappers;
 
+import ar.edu.utn.frc.tup.piii.dtos.user.UserRegisterDto;
 import ar.edu.utn.frc.tup.piii.entities.UserEntity;
 import ar.edu.utn.frc.tup.piii.model.User;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,18 @@ public class UserMapper {
                 .email(entity.getEmail())
                 .avatarUrl(entity.getAvatarUrl())
                 .lastLogin(entity.getLastLogin())
+                .build();
+    }
+
+    public static User toModel(UserRegisterDto dto){
+        if (dto == null) {
+            return null;
+        }
+        return User.builder()
+                .username(dto.getUsername())
+                .passwordHash(dto.getPassword())
+                .email(dto.getEmail())
+                .avatarUrl(dto.getAvatarUrl())
                 .build();
     }
 

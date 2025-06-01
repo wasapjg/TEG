@@ -1,8 +1,17 @@
 package ar.edu.utn.frc.tup.piii.dtos.user;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
+import java.security.Identity;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserLoginDto {
+    private Identity id;
     @NotBlank private String username;
     @NotBlank private String password;
 
