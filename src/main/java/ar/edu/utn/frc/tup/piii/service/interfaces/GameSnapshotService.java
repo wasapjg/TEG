@@ -1,24 +1,24 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 
-import ar.edu.utn.frc.tup.piii.model.entity.GameSnapshot;
-import ar.edu.utn.frc.tup.piii.model.entity.Game;
+import ar.edu.utn.frc.tup.piii.entities.GameSnapshotEntity;
+import ar.edu.utn.frc.tup.piii.model.Game;
 import java.util.List;
 import java.util.Optional;
 
 public interface GameSnapshotService {
 
     // CRUD básico
-    GameSnapshot save(GameSnapshot snapshot);
-    Optional<GameSnapshot> findById(Long id);
-    List<GameSnapshot> findAll();
-    List<GameSnapshot> findByGame(Game game);
+    GameSnapshotEntity save(GameSnapshotEntity snapshot);
+    Optional<GameSnapshotEntity> findById(Long id);
+    List<GameSnapshotEntity> findAll();
+    List<GameSnapshotEntity> findByGame(Game game);
     void deleteById(Long id);
 
     // Creación y restauración de snapshots
-    GameSnapshot createSnapshot(Game game);
-    GameSnapshot createAutoSnapshot(Game game);
+    GameSnapshotEntity createSnapshot(Game game);
+    GameSnapshotEntity createAutoSnapshot(Game game);
     void restoreFromSnapshot(Long gameId, Long snapshotId);
-    GameSnapshot getLatestSnapshot(Long gameId);
+    GameSnapshotEntity getLatestSnapshot(Long gameId);
 
     // Gestión automática
     void autoSaveSnapshot(Game game);
@@ -27,11 +27,11 @@ public interface GameSnapshotService {
 
     // Validaciones
     boolean canRestoreSnapshot(Long gameId, Long snapshotId);
-    boolean isSnapshotValid(GameSnapshot snapshot);
+    boolean isSnapshotValid(GameSnapshotEntity snapshot);
 
     // Utilidades
     String serializeGameState(Game game);
     Game deserializeGameState(String serializedState);
-    List<GameSnapshot> getSnapshotHistory(Long gameId);
+    List<GameSnapshotEntity> getSnapshotHistory(Long gameId);
     int getSnapshotCount(Long gameId);
 }

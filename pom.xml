@@ -11,9 +11,9 @@
     </parent>
     <groupId>ar.edu.utn.frc.tup.piii</groupId>
     <artifactId>tpi-teg</artifactId>
-    <version>0.0.1-SNAPSHOT</version> <!-- Change the artifact version every time you release a new version-->
-    <name>TEG</name> <!-- TODO: Change the project name -->
-    <description>Plan Táctico y Estratégico de la Guerra</description> <!-- TODO: Change the project description -->
+    <version>0.0.1-SNAPSHOT</version>
+    <name>TEG</name>
+    <description>Plan Táctico y Estratégico de la Guerra</description>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>17</java.version>
@@ -22,6 +22,8 @@
         <modelmapper.version>3.1.1</modelmapper.version>
         <maven-pmd-plugin.version>3.21.0</maven-pmd-plugin.version>
         <pmdVersion>7.0.0-rc3</pmdVersion>
+        <mysql.version>8.0.33</mysql.version>
+        <spring-statemachine.version>4.0.0</spring-statemachine.version>
     </properties>
 
     <dependencies>
@@ -59,17 +61,31 @@
             <version>${springdoc-openapi.version}</version>
         </dependency>
 
+        <!--    Spring State Machine    -->
+        <dependency>
+            <groupId>org.springframework.statemachine</groupId>
+            <artifactId>spring-statemachine-starter</artifactId>
+            <version>${spring-statemachine.version}</version>
+        </dependency>
+
         <!--    Lombok    -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
 
-        <!--    H2 Data Base dependency    -->
+        <!--    MySQL Database dependency (reemplaza H2)    -->
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+            <version>${mysql.version}</version>
+        </dependency>
+
+        <!--    H2 para tests únicamente    -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>runtime</scope>
+            <scope>test</scope>
         </dependency>
 
         <!--    Model Mapper dependency    -->
@@ -105,11 +121,11 @@
             <version>6.4.4</version>
         </dependency>
 
-        <!--    DB    -->
+        <!--  Password Validation Library  -->
         <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <version>42.7.2</version>
+            <groupId>org.passay</groupId>
+            <artifactId>passay</artifactId>
+            <version>1.6.4</version>
         </dependency>
 
     </dependencies>

@@ -2,9 +2,9 @@ package ar.edu.utn.frc.tup.piii.service.interfaces;
 
 import ar.edu.utn.frc.tup.piii.dtos.chat.ChatMessageDto;
 import ar.edu.utn.frc.tup.piii.dtos.chat.ChatMessageResponseDto;
-import ar.edu.utn.frc.tup.piii.model.entity.ChatMessage;
-import ar.edu.utn.frc.tup.piii.model.entity.Game;
-import ar.edu.utn.frc.tup.piii.model.entity.Player;
+import ar.edu.utn.frc.tup.piii.model.ChatMessage;
+import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.model.Player;
 import java.util.List;
 import java.util.Optional;
 

@@ -1,10 +1,9 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 
-import ar.edu.utn.frc.tup.piii.model.entity.Player;
-import ar.edu.utn.frc.tup.piii.model.entity.User;
-import ar.edu.utn.frc.tup.piii.model.entity.Game;
-import ar.edu.utn.frc.tup.piii.model.entity.BotProfile;
-import ar.edu.utn.frc.tup.piii.model.entity.Objective;
+import ar.edu.utn.frc.tup.piii.model.Player;
+import ar.edu.utn.frc.tup.piii.model.User;
+import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.model.Objective;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import ar.edu.utn.frc.tup.piii.model.enums.BotLevel;
 import java.util.List;
