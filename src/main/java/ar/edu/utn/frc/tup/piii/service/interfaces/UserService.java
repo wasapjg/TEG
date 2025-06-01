@@ -9,7 +9,6 @@ import java.util.Optional;
 
 public interface UserService {
 
-    User registerUser(UserRegisterDto userRegisterDto);
     User getUserById(Long userId);
     User getUserByUserName(String username);
     Boolean existsByUserName(String username);

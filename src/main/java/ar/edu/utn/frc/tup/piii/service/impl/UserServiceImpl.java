@@ -23,11 +23,6 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private UserMapper userMapper;
 
-    @Override
-    public User registerUser(UserRegisterDto userRegisterDto) {
-        return null;
-    }
-
     /*
     * retrieve a user by username
     * or
