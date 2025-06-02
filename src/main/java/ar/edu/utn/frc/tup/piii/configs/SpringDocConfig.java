@@ -18,19 +18,22 @@ import org.springframework.context.annotation.Configuration;
 public class SpringDocConfig {
 
     /**
-     * The app name mapped from application config.
+     * The app URL mapped from application config.
      */
-    @Value("${app.url}") private String url;
+    @Value("${app.url:http://localhost:8080}")
+    private String url;
 
     /**
      * The developer name mapped from application config.
      */
-    @Value("${app.dev-name}")private String devName;
+    @Value("${app.dev-name:TEG Development Team}")
+    private String devName;
 
     /**
      * The developer email mapped from application config.
      */
-    @Value("${app.dev-email}")private String devEmail;
+    @Value("${app.dev-email:teg-dev@utn.edu.ar}")
+    private String devEmail;
 
     /**
      * The open api bean.
@@ -40,9 +43,9 @@ public class SpringDocConfig {
      * @return the open api configuration.
      */
     @Bean
-    public OpenAPI openApi(@Value("${app.name}") String appName,
-                            @Value("${app.desc}") String appDescription,
-                            @Value("${app.version}") String appVersion) {
+    public OpenAPI openApi(@Value("${app.name:TEG}") String appName,
+                           @Value("${app.desc:Plan Táctico y Estratégico de la Guerra}") String appDescription,
+                           @Value("${app.version:1.0.0}") String appVersion) {
         Info info = new Info()
                 .title(appName)
                 .version(appVersion)

@@ -17,6 +17,7 @@ import java.util.*;
 public class Game {
     private Long id;
     private String gameCode;
+    private Long createdByUserId;
     private String createdByUsername;
     private GameState state;
     private TurnPhase currentPhase;
@@ -76,4 +77,8 @@ public class Game {
     public boolean canStart() {
         return players.size() >= 2 && state == GameState.WAITING_FOR_PLAYERS;
     }
+
+
+
+
 }

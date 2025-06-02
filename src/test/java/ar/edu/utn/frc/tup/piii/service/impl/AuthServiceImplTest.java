@@ -1,27 +1,25 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 
-import ar.edu.utn.frc.tup.piii.dtos.common.JwtResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.user.UserLoginDto;
+import ar.edu.utn.frc.tup.piii.dtos.auth.Credential;
+import ar.edu.utn.frc.tup.piii.dtos.auth.EmailIdentity;
+import ar.edu.utn.frc.tup.piii.dtos.auth.IdentityType;
+import ar.edu.utn.frc.tup.piii.dtos.auth.UsernameIdentity;
 import ar.edu.utn.frc.tup.piii.dtos.user.UserRegisterDto;
-import ar.edu.utn.frc.tup.piii.entities.UserEntity;
-import ar.edu.utn.frc.tup.piii.exception.EmailAlreadyExistsException;
-import ar.edu.utn.frc.tup.piii.exception.InvalidCredentialsException;
-import ar.edu.utn.frc.tup.piii.exception.UserAlreadyExistsException;
-import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
-import ar.edu.utn.frc.tup.piii.mappers.UserMapper;
+import ar.edu.utn.frc.tup.piii.exceptions.EmailAlreadyExistsException;
+import ar.edu.utn.frc.tup.piii.exceptions.InvalidCredentialsException;
+import ar.edu.utn.frc.tup.piii.exceptions.UserAlreadyExistsException;
+import ar.edu.utn.frc.tup.piii.exceptions.UserNotFoundException;
 import ar.edu.utn.frc.tup.piii.model.User;
-import ar.edu.utn.frc.tup.piii.repository.UserRepository;
-import ar.edu.utn.frc.tup.piii.utils.JwtUtils;
+import ar.edu.utn.frc.tup.piii.service.interfaces.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -33,82 +31,78 @@ import static org.mockito.Mockito.*;
 class AuthServiceImplTest {
 
     @Mock
-    private UserRepository userRepository;
-
-    @Mock
-    private UserMapper userMapper;
-
-    @Mock
-    private JwtUtils jwtUtils;
+    private UserService userService;
 
     @Mock
     private BCryptPasswordEncoder encoder;
 
+    @InjectMocks
     private AuthServiceImpl authService;
 
     private UserRegisterDto registerDto;
-    private UserLoginDto loginDto;
-    private UserEntity userEntity;
+    private Credential usernameCredential;
+    private Credential emailCredential;
     private User user;
 
     @BeforeEach
     void setUp() {
-        // Crear el servicio manualmente y usar reflection para inyectar el mock del encoder
-        authService = new AuthServiceImpl(userRepository, jwtUtils);
-        ReflectionTestUtils.setField(authService, "encoder", encoder);
-        ReflectionTestUtils.setField(authService, "userMapper", userMapper);
-
         registerDto = new UserRegisterDto();
         registerDto.setUsername("testuser");
         registerDto.setPassword("Password123!");
         registerDto.setEmail("test@email.com");
         registerDto.setAvatarUrl("http://example.com/avatar.jpg");
 
-        loginDto = new UserLoginDto();
-        loginDto.setUsername("testuser");
-        loginDto.setPassword("Password123!");
+        // Username credential
+        UsernameIdentity usernameIdentity = new UsernameIdentity();
+        usernameIdentity.setType(IdentityType.USERNAME);
+        usernameIdentity.setUserName("testuser");
 
-        userEntity = new UserEntity();
-        userEntity.setId(1L);
-        userEntity.setUsername("testuser");
-        userEntity.setEmail("test@email.com");
-        userEntity.setPasswordHash("$2a$10$hashedPassword");
-        userEntity.setCreatedAt(LocalDateTime.now());
-        userEntity.setIsActive(true);
+        usernameCredential = new Credential();
+        usernameCredential.setIdentity(usernameIdentity);
+        usernameCredential.setPassword("Password123!");
+
+        // Email credential
+        EmailIdentity emailIdentity = new EmailIdentity();
+        emailIdentity.setType(IdentityType.EMAIL);
+        emailIdentity.setEmail("test@email.com");
+
+        emailCredential = new Credential();
+        emailCredential.setIdentity(emailIdentity);
+        emailCredential.setPassword("Password123!");
 
         user = User.builder()
                 .id(1L)
                 .username("testuser")
                 .email("test@email.com")
                 .passwordHash("$2a$10$hashedPassword")
+                .lastLogin(LocalDateTime.now())
                 .build();
     }
 
     @Test
-    void register_WithValidData_ShouldReturnJwtToken() {
+    void register_WithValidData_ShouldReturnUser() {
         // Given
-        when(userRepository.findByUsername(registerDto.getUsername())).thenReturn(Optional.empty());
-        when(userRepository.findByEmail(registerDto.getEmail())).thenReturn(Optional.empty());
+        when(userService.existsByUserName(registerDto.getUsername())).thenReturn(false);
+        when(userService.existsByEmail(registerDto.getEmail())).thenReturn(false);
         when(encoder.encode(registerDto.getPassword())).thenReturn("$2a$10$hashedPassword");
-        when(userMapper.toEntity(any(User.class))).thenReturn(userEntity);
-        when(userRepository.save(any(UserEntity.class))).thenReturn(userEntity);
-        when(jwtUtils.generateToken(registerDto.getUsername())).thenReturn("mock-jwt-token");
+        doNothing().when(userService).save(any(User.class));
 
         // When
-        JwtResponseDto result = authService.register(registerDto);
+        User result = authService.register(registerDto);
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getToken()).isEqualTo("mock-jwt-token");
+        assertThat(result.getUsername()).isEqualTo(registerDto.getUsername());
+        assertThat(result.getEmail()).isEqualTo(registerDto.getEmail());
+        assertThat(result.getPasswordHash()).isEqualTo("$2a$10$hashedPassword");
         verify(encoder).encode(registerDto.getPassword());
-        verify(userRepository).save(any(UserEntity.class));
-        verify(jwtUtils).generateToken(registerDto.getUsername());
+        verify(userService).save(any(User.class));
     }
 
     @Test
     void register_WithExistingUsername_ShouldThrowException() {
         // Given
-        when(userRepository.findByUsername(registerDto.getUsername())).thenReturn(Optional.of(userEntity));
+        when(userService.existsByUserName(registerDto.getUsername())).thenReturn(true);
 
         // When & Then
         assertThatThrownBy(() -> authService.register(registerDto))
@@ -116,15 +110,14 @@ class AuthServiceImplTest {
                 .hasMessage("Username already exists: testuser");
 
         verify(encoder, never()).encode(anyString());
-        verify(userRepository, never()).save(any(UserEntity.class));
-        verify(jwtUtils, never()).generateToken(anyString());
+        verify(userService, never()).save(any(User.class));
     }
 
     @Test
     void register_WithExistingEmail_ShouldThrowException() {
         // Given
-        when(userRepository.findByUsername(registerDto.getUsername())).thenReturn(Optional.empty());
-        when(userRepository.findByEmail(registerDto.getEmail())).thenReturn(Optional.of(userEntity));
+        when(userService.existsByUserName(registerDto.getUsername())).thenReturn(false);
+        when(userService.existsByEmail(registerDto.getEmail())).thenReturn(true);
 
         // When & Then
         assertThatThrownBy(() -> authService.register(registerDto))
@@ -132,77 +125,97 @@ class AuthServiceImplTest {
                 .hasMessage("Email already registered: test@email.com");
 
         verify(encoder, never()).encode(anyString());
-        verify(userRepository, never()).save(any(UserEntity.class));
-        verify(jwtUtils, never()).generateToken(anyString());
+        verify(userService, never()).save(any(User.class));
     }
 
     @Test
-    void login_WithValidCredentials_ShouldReturnJwtToken() {
+    void login_WithValidUsernameCredentials_ShouldReturnUser() {
         // Given
-        when(userRepository.findByUsername(loginDto.getUsername())).thenReturn(Optional.of(userEntity));
-        when(userMapper.toModel(userEntity)).thenReturn(user);
-        when(encoder.matches(loginDto.getPassword(), user.getPasswordHash())).thenReturn(true);
-        when(jwtUtils.generateToken(user.getUsername())).thenReturn("mock-jwt-token");
+        when(userService.getUserByUserName("testuser")).thenReturn(user);
+        when(encoder.matches("Password123!", user.getPasswordHash())).thenReturn(true);
+        doNothing().when(userService).save(any(User.class));
 
         // When
-        JwtResponseDto result = authService.login(loginDto);
+        User result = authService.login(usernameCredential);
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getToken()).isEqualTo("mock-jwt-token");
-        verify(encoder).matches(loginDto.getPassword(), user.getPasswordHash());
-        verify(jwtUtils).generateToken(user.getUsername());
+        assertThat(result.getUsername()).isEqualTo("testuser");
+        assertThat(result.getLastLogin()).isNotNull();
+        assertThat(result.getLastLogin()).isAfter(user.getLastLogin()); // Verificar que se actualizó
+        verify(encoder).matches("Password123!", user.getPasswordHash());
+        verify(userService).save(any(User.class));
+    }
+
+    @Test
+    void login_WithValidEmailCredentials_ShouldReturnUser() {
+        // Given
+        when(userService.getUserByEmailAndPasswordHash("test@email.com", "Password123!")).thenReturn(user);
+        when(encoder.matches("Password123!", user.getPasswordHash())).thenReturn(true);
+        doNothing().when(userService).save(any(User.class));
+
+        // When
+        User result = authService.login(emailCredential);
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.getUsername()).isEqualTo("testuser");
+        assertThat(result.getLastLogin()).isNotNull();
+        assertThat(result.getLastLogin()).isAfter(user.getLastLogin()); // Verificar que se actualizó
+        verify(encoder).matches("Password123!", user.getPasswordHash());
+        verify(userService).save(any(User.class));
     }
 
     @Test
     void login_WithNonExistentUser_ShouldThrowException() {
         // Given
-        when(userRepository.findByUsername(loginDto.getUsername())).thenReturn(Optional.empty());
+        when(userService.getUserByUserName("testuser")).thenThrow(new UserNotFoundException("User not found"));
 
         // When & Then
-        assertThatThrownBy(() -> authService.login(loginDto))
+        assertThatThrownBy(() -> authService.login(usernameCredential))
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessage("User not found");
 
         verify(encoder, never()).matches(anyString(), anyString());
-        verify(jwtUtils, never()).generateToken(anyString());
+        verify(userService, never()).save(any(User.class));
     }
 
     @Test
     void login_WithInvalidPassword_ShouldThrowException() {
         // Given
-        when(userRepository.findByUsername(loginDto.getUsername())).thenReturn(Optional.of(userEntity));
-        when(userMapper.toModel(userEntity)).thenReturn(user);
-        when(encoder.matches(loginDto.getPassword(), user.getPasswordHash())).thenReturn(false);
+        when(userService.getUserByUserName("testuser")).thenReturn(user);
+        when(encoder.matches("Password123!", user.getPasswordHash())).thenReturn(false);
 
         // When & Then
-        assertThatThrownBy(() -> authService.login(loginDto))
+        assertThatThrownBy(() -> authService.login(usernameCredential))
                 .isInstanceOf(InvalidCredentialsException.class)
-                .hasMessage("Invalid Password");
+                .hasMessage("Invalid user or password");
 
-        verify(encoder).matches(loginDto.getPassword(), user.getPasswordHash());
-        verify(jwtUtils, never()).generateToken(anyString());
+        verify(encoder).matches("Password123!", user.getPasswordHash());
+        verify(userService, never()).save(any(User.class));
     }
 
     @Test
     void register_ShouldSetUserFieldsCorrectly() {
         // Given
-        when(userRepository.findByUsername(registerDto.getUsername())).thenReturn(Optional.empty());
-        when(userRepository.findByEmail(registerDto.getEmail())).thenReturn(Optional.empty());
+        when(userService.existsByUserName(registerDto.getUsername())).thenReturn(false);
+        when(userService.existsByEmail(registerDto.getEmail())).thenReturn(false);
         when(encoder.encode(registerDto.getPassword())).thenReturn("$2a$10$hashedPassword");
-        when(userMapper.toEntity(any(User.class))).thenReturn(userEntity);
-        when(userRepository.save(any(UserEntity.class))).thenReturn(userEntity);
-        when(jwtUtils.generateToken(registerDto.getUsername())).thenReturn("mock-jwt-token");
+        doNothing().when(userService).save(any(User.class));
 
         // When
-        authService.register(registerDto);
+        User result = authService.register(registerDto);
 
         // Then
-        verify(userMapper).toEntity(argThat(user ->
+        assertThat(result.getUsername()).isEqualTo(registerDto.getUsername());
+        assertThat(result.getEmail()).isEqualTo(registerDto.getEmail());
+        assertThat(result.getAvatarUrl()).isEqualTo(registerDto.getAvatarUrl());
+        assertThat(result.getPasswordHash()).isEqualTo("$2a$10$hashedPassword");
+        verify(userService).save(argThat(user ->
                 user.getUsername().equals(registerDto.getUsername()) &&
                         user.getEmail().equals(registerDto.getEmail()) &&
                         user.getAvatarUrl().equals(registerDto.getAvatarUrl()) &&
-                        user.getLastLogin() == null
+                        user.getPasswordHash().equals("$2a$10$hashedPassword")
         ));
     }
 
@@ -210,18 +223,16 @@ class AuthServiceImplTest {
     void register_WithNullAvatarUrl_ShouldNotThrowException() {
         // Given
         registerDto.setAvatarUrl(null);
-        when(userRepository.findByUsername(registerDto.getUsername())).thenReturn(Optional.empty());
-        when(userRepository.findByEmail(registerDto.getEmail())).thenReturn(Optional.empty());
+        when(userService.existsByUserName(registerDto.getUsername())).thenReturn(false);
+        when(userService.existsByEmail(registerDto.getEmail())).thenReturn(false);
         when(encoder.encode(registerDto.getPassword())).thenReturn("$2a$10$hashedPassword");
-        when(userMapper.toEntity(any(User.class))).thenReturn(userEntity);
-        when(userRepository.save(any(UserEntity.class))).thenReturn(userEntity);
-        when(jwtUtils.generateToken(registerDto.getUsername())).thenReturn("mock-jwt-token");
+        doNothing().when(userService).save(any(User.class));
 
         // When
-        JwtResponseDto result = authService.register(registerDto);
+        User result = authService.register(registerDto);
 
         // Then
         assertThat(result).isNotNull();
-        assertThat(result.getToken()).isEqualTo("mock-jwt-token");
+        assertThat(result.getAvatarUrl()).isNull();
     }
 }

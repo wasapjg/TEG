@@ -1,7 +1,9 @@
 package ar.edu.utn.frc.tup.piii.mappers;
 
+import ar.edu.utn.frc.tup.piii.dtos.card.CardResponseDto;
 import ar.edu.utn.frc.tup.piii.entities.CardEntity;
 import ar.edu.utn.frc.tup.piii.model.Card;
+import ar.edu.utn.frc.tup.piii.model.Territory;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -28,5 +30,16 @@ public class CardMapper {
         entity.setIsInDeck(model.getIsInDeck());
 
         return entity;
+    }
+    public CardResponseDto toResponseDto(Card model) {
+
+
+        if (model == null) return null;
+        return CardResponseDto.builder()
+                .id(model.getId())
+                .countryName(model.getCountryName())
+                .type(model.getType())
+                .isInDeck(model.getIsInDeck())
+                .build();
     }
 }

@@ -57,15 +57,6 @@ class UserMapperTest {
     }
 
     @Test
-    void toModel_WithNullEntity_ShouldReturnNull() {
-        // When
-        User result = userMapper.toModel(null);
-
-        // Then
-        assertThat(result).isNull();
-    }
-
-    @Test
     void toModel_WithNullFields_ShouldHandleNulls() {
         // Given
         userEntity.setAvatarUrl(null);

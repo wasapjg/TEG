@@ -1,13 +1,15 @@
 package ar.edu.utn.frc.tup.piii.controllers;
 
-import ar.edu.utn.frc.tup.piii.dtos.common.ErrorApi;
-import ar.edu.utn.frc.tup.piii.dtos.common.JwtResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.user.UserLoginDto;
+import ar.edu.utn.frc.tup.piii.dtos.auth.Credential;
+import ar.edu.utn.frc.tup.piii.dtos.auth.EmailIdentity;
+import ar.edu.utn.frc.tup.piii.dtos.auth.IdentityType;
+import ar.edu.utn.frc.tup.piii.dtos.auth.UsernameIdentity;
 import ar.edu.utn.frc.tup.piii.dtos.user.UserRegisterDto;
-import ar.edu.utn.frc.tup.piii.exception.EmailAlreadyExistsException;
-import ar.edu.utn.frc.tup.piii.exception.InvalidCredentialsException;
-import ar.edu.utn.frc.tup.piii.exception.UserAlreadyExistsException;
-import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
+import ar.edu.utn.frc.tup.piii.exceptions.EmailAlreadyExistsException;
+import ar.edu.utn.frc.tup.piii.exceptions.InvalidCredentialsException;
+import ar.edu.utn.frc.tup.piii.exceptions.UserAlreadyExistsException;
+import ar.edu.utn.frc.tup.piii.exceptions.UserNotFoundException;
+import ar.edu.utn.frc.tup.piii.model.User;
 import ar.edu.utn.frc.tup.piii.service.interfaces.AuthService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,10 +20,9 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.sql.SQLException;
+import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
@@ -39,8 +40,9 @@ public class AuthControllerTest {
     private ObjectMapper objectMapper;
 
     private UserRegisterDto registerDto;
-    private UserLoginDto loginDto;
-    private JwtResponseDto jwtResponse;
+    private Credential usernameCredential;
+    private Credential emailCredential;
+    private User mockUser;
 
     @BeforeEach
     void setUp() {
@@ -50,23 +52,45 @@ public class AuthControllerTest {
         registerDto.setEmail("test@email.com");
         registerDto.setAvatarUrl("http://example.com/avatar.jpg");
 
-        loginDto = new UserLoginDto();
-        loginDto.setUsername("testuser");
-        loginDto.setPassword("Password123!");
+        // Username credential
+        UsernameIdentity usernameIdentity = new UsernameIdentity();
+        usernameIdentity.setType(IdentityType.USERNAME);
+        usernameIdentity.setUserName("testuser");
 
-        jwtResponse = new JwtResponseDto("mock-jwt-token");
+        usernameCredential = new Credential();
+        usernameCredential.setIdentity(usernameIdentity);
+        usernameCredential.setPassword("Password123!");
+
+        // Email credential
+        EmailIdentity emailIdentity = new EmailIdentity();
+        emailIdentity.setType(IdentityType.EMAIL);
+        emailIdentity.setEmail("test@email.com");
+
+        emailCredential = new Credential();
+        emailCredential.setIdentity(emailIdentity);
+        emailCredential.setPassword("Password123!");
+
+        mockUser = User.builder()
+                .id(1L)
+                .username("testuser")
+                .email("test@email.com")
+                .passwordHash("hashedPassword")
+                .lastLogin(LocalDateTime.now())
+                .build();
     }
 
     @Test
-    void register_WithValidData_ShouldReturnJwtToken() throws Exception {
-        when(authService.register(any(UserRegisterDto.class))).thenReturn(jwtResponse);
+    void register_WithValidData_ShouldReturnUser() throws Exception {
+        when(authService.register(any(UserRegisterDto.class))).thenReturn(mockUser);
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(registerDto)))
                 .andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("mock-jwt-token"));
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.username").value("testuser"))
+                .andExpect(jsonPath("$.email").value("test@email.com"));
     }
 
     @Test
@@ -146,7 +170,7 @@ public class AuthControllerTest {
     }
 
     @Test
-    void register_WhitExistingUser_ShouldReturnBadRequest() throws Exception {
+    void register_WithExistingUser_ShouldReturnConflict() throws Exception {
         when(authService.register(any(UserRegisterDto.class)))
                 .thenThrow(new UserAlreadyExistsException("User already exists"));
 
@@ -158,7 +182,7 @@ public class AuthControllerTest {
     }
 
     @Test
-    void register_WhitExistingEmail_ShouldReturnBadRequest() throws Exception {
+    void register_WithExistingEmail_ShouldReturnConflict() throws Exception {
         when(authService.register(any(UserRegisterDto.class)))
                 .thenThrow(new EmailAlreadyExistsException("Email already exists"));
 
@@ -185,8 +209,9 @@ public class AuthControllerTest {
     }
 
     @Test
-    void login_WithInternalError() throws Exception {
-        doThrow(new Error("System error")).when(authService).register(any(UserRegisterDto.class));
+    void register_WithInternalError_ShouldReturnInternalServerError() throws Exception {
+        when(authService.register(any(UserRegisterDto.class)))
+                .thenThrow(new Error("System error"));
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -195,57 +220,62 @@ public class AuthControllerTest {
     }
 
     @Test
-    void login_WithValidCredentials_ShouldReturnJwtToken() throws Exception {
-        when(authService.login(any(UserLoginDto.class))).thenReturn(jwtResponse);
+    void login_WithValidUsernameCredentials_ShouldReturnUser() throws Exception {
+        when(authService.login(any(Credential.class))).thenReturn(mockUser);
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginDto)))
+                        .content(objectMapper.writeValueAsString(usernameCredential)))
                 .andDo(print())
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("mock-jwt-token"));
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.username").value("testuser"))
+                .andExpect(jsonPath("$.email").value("test@email.com"));
+    }
+
+    @Test
+    void login_WithValidEmailCredentials_ShouldReturnUser() throws Exception {
+        when(authService.login(any(Credential.class))).thenReturn(mockUser);
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(emailCredential)))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.username").value("testuser"))
+                .andExpect(jsonPath("$.email").value("test@email.com"));
     }
 
     @Test
     void login_WithInvalidCredentials_ShouldReturnUnauthorized() throws Exception{
-        when(authService.login(any(UserLoginDto.class))).thenThrow(new InvalidCredentialsException("Invalid Password"));
+        when(authService.login(any(Credential.class)))
+                .thenThrow(new InvalidCredentialsException("Invalid Password"));
 
-        mockMvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(loginDto)))
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(usernameCredential)))
                 .andDo(print())
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void login_WithNonExistentUser_ShouldReturnNotFound() throws Exception {
-        when(authService.login(any(UserLoginDto.class)))
+        when(authService.login(any(Credential.class)))
                 .thenThrow(new UserNotFoundException("User not found"));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginDto)))
+                        .content(objectMapper.writeValueAsString(usernameCredential)))
                 .andDo(print())
                 .andExpect(status().isNotFound());
     }
 
     @Test
-    void login_WithEmptyUsername_ShouldReturnBadRequest() throws Exception {
-        loginDto.setUsername("");
-
+    void login_WithNullCredential_ShouldReturnBadRequest() throws Exception {
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginDto)))
-                .andDo(print())
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void login_WithEmptyPassword_ShouldReturnBadRequest() throws Exception {
-        loginDto.setPassword("");
-
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(loginDto)))
+                        .content("{}"))
                 .andDo(print())
                 .andExpect(status().isBadRequest());
     }

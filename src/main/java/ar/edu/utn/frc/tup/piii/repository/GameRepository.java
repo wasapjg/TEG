@@ -32,4 +32,7 @@ public interface GameRepository extends JpaRepository<GameEntity, Long> {
 
     @Query("SELECT COUNT(g) FROM GameEntity g WHERE g.status = 'IN_PROGRESS'")
     long countActiveGames();
+
+    @Query("SELECT CASE WHEN COUNT(g) > 0 THEN true ELSE false END FROM GameEntity g WHERE g.gameCode = :gameCode")
+    boolean existsByGameCode(@Param("gameCode") String gameCode);
 }

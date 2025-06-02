@@ -1,6 +1,6 @@
 package ar.edu.utn.frc.tup.piii.controllers;
 
-import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
+import ar.edu.utn.frc.tup.piii.exceptions.UserNotFoundException;
 import ar.edu.utn.frc.tup.piii.model.User;
 import ar.edu.utn.frc.tup.piii.service.interfaces.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,7 +17,6 @@ import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
