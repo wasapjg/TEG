@@ -1,7 +1,7 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 
 import ar.edu.utn.frc.tup.piii.entities.UserEntity;
-import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
+import ar.edu.utn.frc.tup.piii.exceptions.UserNotFoundException;
 import ar.edu.utn.frc.tup.piii.mappers.UserMapper;
 import ar.edu.utn.frc.tup.piii.model.User;
 import ar.edu.utn.frc.tup.piii.repository.UserRepository;
@@ -156,15 +156,5 @@ class UserServiceImplTest {
                 .hasMessage("User not found with id: 999");
     }
 
-    @Test
-    void registerUser_ShouldReturnNull() {
-        // Given
-        // El método no está implementado
 
-        // When
-        User result = userService.registerUser(null);
-
-        // Then
-        assertThat(result).isNull();
-    }
 }

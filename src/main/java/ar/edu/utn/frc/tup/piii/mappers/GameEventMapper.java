@@ -1,5 +1,6 @@
 package ar.edu.utn.frc.tup.piii.mappers;
 
+import ar.edu.utn.frc.tup.piii.dtos.event.GameEventDto;
 import ar.edu.utn.frc.tup.piii.entities.GameEventEntity;
 import ar.edu.utn.frc.tup.piii.model.GameEvent;
 import org.springframework.stereotype.Component;
@@ -66,5 +67,14 @@ public class GameEventMapper {
             default:
                 return entity.getType().toString();
         }
+    }
+    public GameEventDto toDto(GameEvent model) {
+        if (model == null) return null;
+        return GameEventDto.builder()
+                .id(model.getId())
+                .type(model.getType())
+                .description(model.getDescription())
+                .timestamp(model.getTimestamp())
+                .build();
     }
 }

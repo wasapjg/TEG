@@ -1,12 +1,12 @@
 package ar.edu.utn.frc.tup.piii.dtos.game;
 
-import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.country.CountryResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.continent.ContinentResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.event.GameEventDto;
 import ar.edu.utn.frc.tup.piii.dtos.chat.ChatMessageResponseDto;
-import ar.edu.utn.frc.tup.piii.model.enums.TurnPhase;
+import ar.edu.utn.frc.tup.piii.dtos.continent.ContinentResponseDto;
+import ar.edu.utn.frc.tup.piii.dtos.country.CountryResponseDto;
+import ar.edu.utn.frc.tup.piii.dtos.event.GameEventDto;
+import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
 import ar.edu.utn.frc.tup.piii.model.enums.GameState;
+import ar.edu.utn.frc.tup.piii.model.enums.TurnPhase;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,6 +17,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * DTO para devolver los datos de la partida completa tras cada operación.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -53,7 +56,7 @@ public class GameResponseDto {
     private List<ChatMessageResponseDto> recentMessages;
 
     private String currentPlayerName;
-    private Integer remainingCards;
+
     private Boolean canStart;
     private Boolean isGameOver;
     private String winnerName;
