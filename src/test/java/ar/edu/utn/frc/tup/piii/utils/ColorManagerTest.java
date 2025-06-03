@@ -1,5 +1,7 @@
 package ar.edu.utn.frc.tup.piii.utils;
 
+import ar.edu.utn.frc.tup.piii.entities.GameEntity;
+import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
@@ -12,6 +14,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -21,61 +25,63 @@ class ColorManagerTest {
     @InjectMocks
     private ColorManager colorManager;
 
-    private Game game;
+    private GameEntity gameEntity;
 
     @BeforeEach
     void setUp() {
-        game = Game.builder()
-                .id(1L)
-                .players(Collections.emptyList())
-                .build();
+        gameEntity = new GameEntity();
+        // Inicialmente, no hay jugadores
+        gameEntity.setPlayers(Collections.emptyList());
     }
 
     @Test
     void getAvailableRandomColor_WhenNoPlayersInGame_ShouldReturnAnyColor() {
-        PlayerColor result = colorManager.getAvailableRandomColor(game);
+        PlayerColor result = colorManager.getAvailableRandomColor(gameEntity);
 
+        // Debe devolver algún color no nulo, y estar dentro del enum completo
         assertThat(result).isNotNull();
         assertThat(result).isIn(PlayerColor.values());
     }
 
     @Test
     void getAvailableRandomColor_WhenSomeColorsUsed_ShouldReturnAvailableColor() {
-        Player player1 = Player.builder()
-                .id(1L)
-                .color(PlayerColor.RED)
-                .status(PlayerStatus.ACTIVE)
-                .build();
+        // Creamos dos PlayerEntity con colores específicos
+        PlayerEntity player1 = new PlayerEntity();
+        player1.setId(1L);
+        player1.setColor(PlayerColor.RED);
 
-        Player player2 = Player.builder()
-                .id(2L)
-                .color(PlayerColor.BLUE)
-                .status(PlayerStatus.ACTIVE)
-                .build();
+        PlayerEntity player2 = new PlayerEntity();
+        player2.setId(2L);
+        player2.setColor(PlayerColor.BLUE);
 
-        game.setPlayers(Arrays.asList(player1, player2));
+        // Asignamos la lista de jugadores al GameEntity
+        gameEntity.setPlayers(Arrays.asList(player1, player2));
 
-        PlayerColor result = colorManager.getAvailableRandomColor(game);
+        PlayerColor result = colorManager.getAvailableRandomColor(gameEntity);
 
+        // Debe devolver un color distinto de RED y BLUE
         assertThat(result).isNotNull();
         assertThat(result).isNotIn(PlayerColor.RED, PlayerColor.BLUE);
     }
 
     @Test
     void getAvailableRandomColor_WhenAllColorsUsed_ShouldReturnAnyColor() {
-        Player[] players = new Player[PlayerColor.values().length];
-        for (int i = 0; i < PlayerColor.values().length; i++) {
-            players[i] = Player.builder()
-                    .id((long) (i + 1))
-                    .color(PlayerColor.values()[i])
-                    .status(PlayerStatus.ACTIVE)
-                    .build();
-        }
+        // Creamos tantos PlayerEntity como colores existentes
+        List<PlayerEntity> allPlayers = Arrays.stream(PlayerColor.values())
+                .map(color -> {
+                    PlayerEntity p = new PlayerEntity();
+                    p.setId((long) (color.ordinal() + 1));
+                    p.setColor(color);
+                    return p;
+                })
+                .collect(Collectors.toList());
 
-        game.setPlayers(Arrays.asList(players));
+        // Asignamos esa lista a gameEntity
+        gameEntity.setPlayers(allPlayers);
 
-        PlayerColor result = colorManager.getAvailableRandomColor(game);
+        PlayerColor result = colorManager.getAvailableRandomColor(gameEntity);
 
+        // Si todos los colores ya están en uso, puede devolver cualquiera del enum
         assertThat(result).isNotNull();
         assertThat(result).isIn(PlayerColor.values());
     }

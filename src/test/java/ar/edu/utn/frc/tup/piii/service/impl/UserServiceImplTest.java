@@ -1,7 +1,7 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 
 import ar.edu.utn.frc.tup.piii.entities.UserEntity;
-import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
+import ar.edu.utn.frc.tup.piii.exceptions.UserNotFoundException;
 import ar.edu.utn.frc.tup.piii.mappers.UserMapper;
 import ar.edu.utn.frc.tup.piii.model.User;
 import ar.edu.utn.frc.tup.piii.repository.UserRepository;
@@ -155,5 +155,6 @@ class UserServiceImplTest {
                 .isInstanceOf(UserNotFoundException.class)
                 .hasMessage("User not found with id: 999");
     }
+
 
 }

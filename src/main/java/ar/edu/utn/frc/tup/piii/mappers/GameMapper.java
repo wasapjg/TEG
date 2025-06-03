@@ -1,6 +1,9 @@
 package ar.edu.utn.frc.tup.piii.mappers;
+import ar.edu.utn.frc.tup.piii.dtos.country.CountryResponseDto;
+import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
 import ar.edu.utn.frc.tup.piii.entities.*;
 import ar.edu.utn.frc.tup.piii.model.*;
+import ar.edu.utn.frc.tup.piii.model.enums.GameState;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import java.util.stream.Collectors;
@@ -21,6 +24,10 @@ public class GameMapper {
 
     @Autowired
     private ChatMessageMapper chatMessageMapper;
+    @Autowired private TerritoryMapper territoryMapper;
+    @Autowired private ContinentMapper continentMapper;       // para continentes
+    @Autowired private ChatMessageMapper chatMessageMapperDto;
+
 
     public Game toModel(GameEntity entity) {
         if (entity == null) return null;
@@ -28,6 +35,7 @@ public class GameMapper {
         return Game.builder()
                 .id(entity.getId())
                 .gameCode(entity.getGameCode())
+                .createdByUserId(entity.getCreatedBy() != null ? entity.getCreatedBy().getId() : null)
                 .createdByUsername(entity.getCreatedBy() != null ? entity.getCreatedBy().getUsername() : null)
                 .state(entity.getStatus())
                 .currentPhase(entity.getCurrentPhase())
@@ -106,4 +114,96 @@ public class GameMapper {
         }
         return "Unknown";
     }
+
+    public GameResponseDto toResponseDto(GameEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        Game model = toModel(entity);
+        return toResponseDto(model);
+    }
+
+
+    public GameResponseDto toResponseDto(Game model) {
+        if (model == null) {
+            return null;
+        }
+
+        GameResponseDto.GameResponseDtoBuilder builder = GameResponseDto.builder()
+                .id(model.getId())
+                .gameCode(model.getGameCode())
+                .createdByUsername(model.getCreatedByUsername())
+                .state(model.getState() != null ? model.getState() : null)            // GameState
+                .currentPhase(model.getCurrentPhase() != null ? model.getCurrentPhase() : null) // TurnPhase
+                .currentTurn(model.getCurrentTurn())
+                .currentPlayerIndex(model.getCurrentPlayerIndex())
+                .maxPlayers(model.getMaxPlayers())
+                .turnTimeLimit(model.getTurnTimeLimit())
+                .chatEnabled(model.getChatEnabled())
+                .pactsAllowed(model.getPactsAllowed())
+                .createdAt(model.getCreatedAt())
+                .startedAt(model.getStartedAt())
+                .finishedAt(model.getFinishedAt())
+                .currentPlayerName(model.getCreatedByUsername())
+//              .winnerName(model.getWinnerName())
+
+                .canStart(
+                        model.getState() == GameState.WAITING_FOR_PLAYERS &&
+                                model.getPlayers() != null &&
+                                model.getPlayers().size() >= 2
+                )
+
+                .isGameOver(model.getState() == GameState.FINISHED);
+
+        // 1) Lista de jugadores:
+        if (model.getPlayers() != null && !model.getPlayers().isEmpty()) {
+            builder.players(
+                    model.getPlayers().stream()
+                            .map(playerMapper::toResponseDto)
+                            .collect(Collectors.toList())
+            );
+        }
+        // 2) Mapear territorios
+
+        if (model.getTerritories() != null && !model.getTerritories().isEmpty()) {
+            Map<Long, CountryResponseDto> mappedTerritories =
+                    model.getTerritories().entrySet().stream()
+                            .collect(Collectors.toMap(
+                                    Map.Entry::getKey,
+                                    entry -> territoryMapper.toResponseDto(entry.getValue())
+                            ));
+
+            builder.territories(mappedTerritories);
+        }
+//         3) Mapear continentes
+
+//         if (model.getContinents() != null && !model.getContinents().isEmpty()) {
+//             builder.continents(
+//                 model.getContinents().stream()
+//                     .map(continentMapper::toResponseDto)
+//                     .collect(Collectors.toList())
+//             );
+//         }
+//         4) Mapear eventos recientes
+        if (model.getEvents() != null && !model.getEvents().isEmpty()) {
+            builder.recentEvents(
+                    model.getEvents().stream()
+                            .map(gameEventMapper::toDto)
+                            .collect(Collectors.toList())
+            );
+        }
+//         5) Mapear mensajes de chat
+        if (model.getChatMessages() != null && !model.getChatMessages().isEmpty()) {
+            builder.recentMessages(
+                    model.getChatMessages().stream()
+                            .map(chatMessageMapper::toResponseDto)
+                            .collect(Collectors.toList())
+            );
+        }
+
+        return builder.build();
+    }
+
+
+
 }

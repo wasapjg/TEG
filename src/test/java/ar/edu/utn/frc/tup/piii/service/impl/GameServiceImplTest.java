@@ -1,9 +1,8 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 
 import ar.edu.utn.frc.tup.piii.entities.GameEntity;
-import ar.edu.utn.frc.tup.piii.exception.GameNotFoundException;
+import ar.edu.utn.frc.tup.piii.exceptions.GameNotFoundException;
 import ar.edu.utn.frc.tup.piii.model.Game;
-import ar.edu.utn.frc.tup.piii.service.impl.GameServiceImpl;
 import ar.edu.utn.frc.tup.piii.repository.GameRepository;
 import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
 import org.junit.jupiter.api.Test;
