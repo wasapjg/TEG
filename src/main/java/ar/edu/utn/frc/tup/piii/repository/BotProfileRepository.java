@@ -22,4 +22,6 @@ public interface BotProfileRepository extends JpaRepository<BotProfileEntity, Lo
 
     @Query("SELECT bp FROM BotProfileEntity bp ORDER BY FUNCTION('RAND')")
     List<BotProfileEntity> findAllRandomOrder();
+
+
 }

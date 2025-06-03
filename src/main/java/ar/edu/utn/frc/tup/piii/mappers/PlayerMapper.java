@@ -1,6 +1,9 @@
 package ar.edu.utn.frc.tup.piii.mappers;
+import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
+import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
 import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
 import ar.edu.utn.frc.tup.piii.model.Player;
+import ar.edu.utn.frc.tup.piii.model.Territory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import java.util.stream.Collectors;
@@ -62,4 +65,48 @@ public class PlayerMapper {
         }
         return "Unknown Player";
     }
+
+
+    public PlayerResponseDto toResponseDto(Player player) {
+        if (player == null) {
+            return null;
+        }
+
+        PlayerResponseDto.PlayerResponseDtoBuilder builder = PlayerResponseDto.builder()
+                .id(player.getId())
+                .username(player.getUsername())
+                .displayName(player.getDisplayName())
+                .status(player.getStatus() != null ? player.getStatus().name() : null)
+                .color(player.getColor() != null ? player.getColor().name() : null)
+                .isBot(player.getIsBot())
+                .botLevel(player.getBotLevel() != null ? player.getBotLevel().name() : null)
+                .armiesToPlace(player.getArmiesToPlace())
+                .seatOrder(player.getSeatOrder())
+                .joinedAt(player.getJoinedAt())
+                .eliminatedAt(player.getEliminatedAt())
+                .territoryIds(player.getTerritoryIds())
+                .territoryCount(player.getTerritoryCount())
+                .totalArmies(null); // Si quisieras calcular total armies, necesitarías el mapa de territorios
+
+//         -----------------------------
+//         Mano de cartas (hand): si quisieras mapear a CardResponseDto, descomenta:
+//         -----------------------------
+        if (player.getHand() != null && !player.getHand().isEmpty()) {
+            builder.hand(
+                    player.getHand().stream()
+                            .map(cardMapper::toResponseDto)
+                            .collect(Collectors.toList())
+            );
+        }
+
+//         -----------------------------
+//         Objetivo (Objective): si quisieras mapear a ObjectiveResponseDto, descomenta:
+//         -----------------------------
+        if (player.getObjective() != null) {
+            builder.objective(objectiveMapper.toResponseDto(player.getObjective()));
+        }
+
+        return builder.build();
+    }
+
 }

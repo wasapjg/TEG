@@ -98,8 +98,8 @@ INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (5, 2); -- BRASIL
 
 -- COLOMBIA (ID 6)
 -- Ya fue agregada: PERU
-INSERT INTO PAISES_LIMITROFES (country_id, neighbor_id) VALUES (6, 11); -- MEXICO
-INSERT INTO PAISES_LIMITROFES (country_id, neighbor_id) VALUES (6, 2);  -- BRASIL
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (6, 11); -- MEXICO
+INSERT INTO country_neighbors (country_id, neighbor_id) VALUES (6, 2);  -- BRASIL
 
 -- BRASIL (ID 2)
 -- Ya fueron agregadas: URUGUAY, COLOMBIA, PERU, ARGENTINA
@@ -263,3 +263,10 @@ INSERT INTO bot_profiles (level, strategy, bot_name) VALUES
                                                          ('EXPERT', 'DEFENSIVE', 'Bot Experto Defensivo'),
                                                          ('EXPERT', 'BALANCED', 'Bot Experto Equilibrado'),
                                                          ('EXPERT', 'OBJECTIVE_FOCUSED', 'Bot Experto Estratega');
+
+-- insertar usuarios para probar endopoints
+INSERT INTO USERS (ID, USERNAME, EMAIL, PASSWORD_HASH, IS_ACTIVE, CREATED_AT)
+VALUES (1, 'usuario1', 'usuario1@example.com', 'hash1', TRUE, CURRENT_TIMESTAMP);
+
+INSERT INTO USERS (ID, USERNAME, EMAIL, PASSWORD_HASH, IS_ACTIVE, CREATED_AT)
+VALUES (2, 'usuario2', 'usuario2@example.com', 'hash2', TRUE, CURRENT_TIMESTAMP);
