@@ -1,8 +1,6 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 import ar.edu.utn.frc.tup.piii.dtos.bot.AddBotsDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.GameCreationDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.JoinGameDto;
+import ar.edu.utn.frc.tup.piii.dtos.game.*;
 import ar.edu.utn.frc.tup.piii.exceptions.*;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import jakarta.transaction.Transactional;
@@ -58,15 +56,11 @@ public interface GameService {
     boolean existsById(Long gameId);
 
     /**
-     * Creates a new game with the specified configuration.
      *
-     * @param dto game creation data transfer object
-     * @return the created game
-     * @throws UserNotFoundException if the creator user is not found
-     * @throws GameCodeAlreadyExistsException if generated code already exists
+     * @param hostUserId
+     * @return
      */
-    @Transactional
-    Game createNewGame(GameCreationDto dto);
+    public Game createLobbyWithDefaults(Long hostUserId);
 
     GameResponseDto getGameByCode(String gameCode);
 
@@ -107,4 +101,9 @@ public interface GameService {
      */
     @Transactional
     Game startGame(String gameCode);
+
+
+
+    Game updateGameSettings(String gameCode, UpdateGameSettingsDto dto);
+
 }

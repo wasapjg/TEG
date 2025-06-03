@@ -1,15 +1,15 @@
 package ar.edu.utn.frc.tup.piii.controllers;
 
 import ar.edu.utn.frc.tup.piii.dtos.bot.AddBotsDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.GameCreationDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.JoinGameDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.StartGameDto;
+import ar.edu.utn.frc.tup.piii.dtos.game.*;
 import ar.edu.utn.frc.tup.piii.exceptions.ForbiddenException;
 import ar.edu.utn.frc.tup.piii.exceptions.GameNotFoundException;
+import ar.edu.utn.frc.tup.piii.exceptions.InvalidGameConfigurationException;
+import ar.edu.utn.frc.tup.piii.exceptions.InvalidGameStateException;
 import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,25 +29,38 @@ public class GameController {
     private GameMapper gameMapper;
 
     /**
-     * – Crear nueva partida.
-     * Recibe GameCreationDto con:
-     *  - createdByUserId (Long)
-     *  - maxPlayers       (Integer)
-     *  - turnTimeLimit    (Integer)
-     *  - chatEnabled      (Boolean)
-     *  - pactsAllowed     (Boolean)
+     * POST /api/games/create-lobby
+     * Recibe: { "hostUserId": Long }
+     * Crea en BD un GameEntity con:
+     *    - gameCode único
+     *    - hostUserId
+     *    - maxPlayers  = 6   (valor por defecto)
+     *    - turnTimeLimit = 120 (valor por defecto, en segundos)
+     *    - chatEnabled = true
+     *    - pactsAllowed = false
+     *    - estado = WAITING_FOR_PLAYERS
+     * Crea un PlayerEntity para el host, con color RED (por ej.), status WAITING.
+     * Retorna: GameResponseDto completo (con lista de jugadores, configuraciones, gameCode, etc.)
      */
-    @PostMapping
-    public ResponseEntity<GameResponseDto> createGame(@RequestBody GameCreationDto dto) {
-        if (dto.getCreatedByUserId() == null) {
-            throw new IllegalArgumentException("Debe enviar createdByUserId en el GameCreationDto");
+    @PostMapping("/create-lobby")
+    public ResponseEntity<GameResponseDto> createLobby(@RequestBody CreateCodeDto dto) {
+        if (dto.getHostUserId() == null) {
+            throw new IllegalArgumentException("Debe enviar hostUserId en el CreateCodeDto");
         }
-        Game createdGame = gameService.createNewGame(dto);
+
+        // El service va a crear el GameEntity en BD con defaults y crear el player del host
+        Game createdGame = gameService.createLobbyWithDefaults(dto.getHostUserId());
+
+        // Mapeo a GameResponseDto
         GameResponseDto response = gameMapper.toResponseDto(createdGame);
-        return ResponseEntity.status(201).body(response);
+
+        // HTTP 201 Created
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    //obitene los datos completos del juego a travez del gamecode
+
+
+    //obtiene los datos completos del juego a través del gamecode
     @GetMapping("/{gameCode}")
     public ResponseEntity<GameResponseDto> getGameByCode(@PathVariable String gameCode) {
         try {
@@ -61,7 +74,7 @@ public class GameController {
     }
 
     /**
-     * -Unirse a partida existente.
+     * Unirse a partida existente.
      * Recibe JoinGameDto con:
      *  - gameCode (String)
      *  - userId   (Long)
@@ -77,7 +90,7 @@ public class GameController {
     }
 
     /**
-     * – Añadir bots a la partida (solo el anfitrión).
+     * Añadir bots a la partida (solo el anfitrión).
      * Recibe AddBotsDto con:
      *  - gameCode     (String)
      *  - numberOfBots (Integer)
@@ -95,14 +108,13 @@ public class GameController {
         if (existing.getCreatedByUserId() == null) {
             throw new IllegalStateException("Error interno: createdByUserId es null para gameCode=" + dto.getGameCode());
         }
-        if (! dto.getRequesterId().equals(existing.getCreatedByUserId())) {
+        if (!dto.getRequesterId().equals(existing.getCreatedByUserId())) {
             throw new ForbiddenException("Solo el anfitrión puede agregar bots a la partida");
         }
         Game updatedGame = gameService.addBotsToGame(dto);
         GameResponseDto response = gameMapper.toResponseDto(updatedGame);
         return ResponseEntity.ok(response);
     }
-
 
     /**
      * Iniciar la partida (solo el anfitrión).
@@ -125,4 +137,25 @@ public class GameController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Actualizar configuraciones del juego (solo el anfitrión).
+     * Recibe UpdateGameSettingsDto con:
+     *  - requesterId    (Long)     - ID del usuario que hace la petición
+     *  - maxPlayers     (Integer)  - Nuevo límite de jugadores (opcional)
+     *  - turnTimeLimit  (Integer)  - Nuevo límite de tiempo por turno (opcional)
+     *  - chatEnabled    (Boolean)  - Habilitar/deshabilitar chat (opcional)
+     *  - pactsAllowed   (Boolean)  - Permitir/prohibir pactos (opcional)
+     */
+    @PutMapping("/{gameCode}/settings")
+    public ResponseEntity<GameResponseDto> updateGameSettings(@PathVariable String gameCode, @RequestBody UpdateGameSettingsDto dto) {
+
+        if (dto.getRequesterId() == null) {
+            throw new IllegalArgumentException("requesterId is required");
+        }
+
+        Game updatedGame = gameService.updateGameSettings(gameCode, dto);
+        GameResponseDto response = gameMapper.toResponseDto(updatedGame);
+
+        return ResponseEntity.ok(response);
+    }
 }
