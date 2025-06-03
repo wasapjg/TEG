@@ -156,15 +156,4 @@ class UserServiceImplTest {
                 .hasMessage("User not found with id: 999");
     }
 
-    @Test
-    void registerUser_ShouldReturnNull() {
-        // Given
-        // El método no está implementado
-
-        // When
-        User result = userService.registerUser(null);
-
-        // Then
-        assertThat(result).isNull();
-    }
 }

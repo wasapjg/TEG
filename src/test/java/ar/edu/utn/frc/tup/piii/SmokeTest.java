@@ -76,8 +76,6 @@ class SmokeTest {
     @Autowired
     private ObjectiveRepository objectiveRepository;
 
-    // ======================== SMOKE TESTS ========================
-
     @Test
     void contextLoads() {
         // Verifica que el contexto de Spring Boot se carga correctamente
