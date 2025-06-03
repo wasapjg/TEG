@@ -35,6 +35,7 @@ public class GameMapper {
         return Game.builder()
                 .id(entity.getId())
                 .gameCode(entity.getGameCode())
+                .createdByUserId(entity.getCreatedBy() != null ? entity.getCreatedBy().getId() : null)
                 .createdByUsername(entity.getCreatedBy() != null ? entity.getCreatedBy().getUsername() : null)
                 .state(entity.getStatus())
                 .currentPhase(entity.getCurrentPhase())
@@ -112,6 +113,14 @@ public class GameMapper {
             return player.getBotProfile().getBotName();
         }
         return "Unknown";
+    }
+
+    public GameResponseDto toResponseDto(GameEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        Game model = toModel(entity);
+        return toResponseDto(model);
     }
 
 

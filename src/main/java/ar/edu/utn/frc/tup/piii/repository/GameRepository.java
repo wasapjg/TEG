@@ -14,7 +14,7 @@ import java.util.Optional;
 
 @Repository
 public interface GameRepository extends JpaRepository<GameEntity, Long> {
-    Optional<GameEntity> findByGameCode(String gameCode);
+
     List<GameEntity> findByStatus(GameState status);
     List<GameEntity> findByCreatedBy(UserEntity createdBy);
 
@@ -35,4 +35,7 @@ public interface GameRepository extends JpaRepository<GameEntity, Long> {
 
     @Query("SELECT CASE WHEN COUNT(g) > 0 THEN true ELSE false END FROM GameEntity g WHERE g.gameCode = :gameCode")
     boolean existsByGameCode(@Param("gameCode") String gameCode);
+
+    @Query("SELECT g FROM GameEntity g LEFT JOIN FETCH g.players WHERE g.gameCode = :gameCode")
+    Optional<GameEntity> findByGameCode(@Param("gameCode") String gameCode);
 }

@@ -1,6 +1,7 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 import ar.edu.utn.frc.tup.piii.dtos.bot.AddBotsDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.GameCreationDto;
+import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.JoinGameDto;
 import ar.edu.utn.frc.tup.piii.entities.BotProfileEntity;
 import ar.edu.utn.frc.tup.piii.entities.GameEntity;
@@ -17,7 +18,7 @@ import ar.edu.utn.frc.tup.piii.repository.UserRepository;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import ar.edu.utn.frc.tup.piii.utils.CodeGenerator;
 import ar.edu.utn.frc.tup.piii.utils.ColorManager;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -91,7 +92,6 @@ public class GameServiceImpl implements GameService {
     @Transactional
     @Override
     public Game createNewGame(GameCreationDto dto) {
-        //  Validar usuario
         UserEntity creator = userRepository.findById(dto.getCreatedByUserId())
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + dto.getCreatedByUserId()));
 
@@ -99,7 +99,10 @@ public class GameServiceImpl implements GameService {
             throw new InvalidGameStateException("User is not active");
         }
 
-        //  Generar código único
+        if (dto.getMaxPlayers() != null && (dto.getMaxPlayers() < 2 || dto.getMaxPlayers() > 6)) {
+            throw new InvalidGameConfigurationException("Max players must be between 2 and 6 for TEG");
+        }
+
         String gameCode = codeGenerator.generateUniqueCode();
 
         //  Crear entidad de juego
@@ -112,14 +115,14 @@ public class GameServiceImpl implements GameService {
         gameEntity.setChatEnabled(dto.getChatEnabled() != null ? dto.getChatEnabled() : true);
         gameEntity.setPactsAllowed(dto.getPactsAllowed() != null ? dto.getPactsAllowed() : false);
 
-        //  Guardar juego
+
         GameEntity savedGame = gameRepository.save(gameEntity);
 
-        // Añadir creador como primer jugador
+
         PlayerEntity creatorPlayer = new PlayerEntity();
         creatorPlayer.setUser(creator);
         creatorPlayer.setGame(savedGame);
-        creatorPlayer.setColor(PlayerColor.RED); // Primer jugador siempre rojo
+        creatorPlayer.setColor(PlayerColor.RED);
         creatorPlayer.setStatus(PlayerStatus.WAITING);
         creatorPlayer.setSeatOrder(1);
 
@@ -128,28 +131,29 @@ public class GameServiceImpl implements GameService {
         return gameMapper.toModel(savedGame);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public GameResponseDto getGameByCode(String gameCode) {
+
+        GameEntity gameEntity = gameRepository.findByGameCode(gameCode)
+                .orElseThrow(() -> new GameNotFoundException("Game not found with code: " + gameCode));
+        return gameMapper.toResponseDto(gameEntity);
+    }
+
 
     @Transactional
     @Override
     public Game joinGame(JoinGameDto dto) {
-        //  Buscar partida
         GameEntity gameEntity = gameRepository.findByGameCode(dto.getGameCode())
                 .orElseThrow(() -> new GameNotFoundException("Game not found with code: " + dto.getGameCode()));
-
-        // Validar estado de partida
         if (gameEntity.getStatus() != GameState.WAITING_FOR_PLAYERS) {
             throw new InvalidGameStateException("Game is not accepting new players. Current state: " + gameEntity.getStatus());
         }
-
-        //  Validar usuario
         UserEntity user = userRepository.findById(dto.getUserId())
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + dto.getUserId()));
-
         if (!user.getIsActive()) {
             throw new InvalidGameStateException("User is not active");
         }
-
-        //  Verificar que no esté ya en la partida
         boolean alreadyJoined = gameEntity.getPlayers().stream()
                 .anyMatch(p -> p.getUser() != null && p.getUser().getId().equals(dto.getUserId()));
 
@@ -157,19 +161,16 @@ public class GameServiceImpl implements GameService {
             throw new InvalidGameStateException("User is already in this game");
         }
 
-        // Verificar capacidad
         int currentPlayers = gameEntity.getPlayers().size();
         if (currentPlayers >= gameEntity.getMaxPlayers()) {
             throw new GameFullException("Game is full. Max players: " + gameEntity.getMaxPlayers());
         }
 
-        //  Asignar color disponible
         PlayerColor availableColor = colorManager.getAvailableRandomColor(gameEntity);
         if (availableColor == null) {
             throw new ColorNotAvailableException("No colors available");
         }
 
-        //  Añadir jugador
         PlayerEntity newPlayer = new PlayerEntity();
         newPlayer.setUser(user);
         newPlayer.setGame(gameEntity);
@@ -186,16 +187,11 @@ public class GameServiceImpl implements GameService {
     @Transactional
     @Override
     public Game addBotsToGame(AddBotsDto dto) {
-        //  Buscar partida
         GameEntity gameEntity = gameRepository.findByGameCode(dto.getGameCode())
                 .orElseThrow(() -> new GameNotFoundException("Game not found with code: " + dto.getGameCode()));
-
-        //  Validar estado
         if (gameEntity.getStatus() != GameState.WAITING_FOR_PLAYERS) {
             throw new InvalidGameStateException("Cannot add bots. Game state: " + gameEntity.getStatus());
         }
-
-        //  Verificar espacios disponibles
         int currentPlayers = gameEntity.getPlayers().size();
         int requestedBots = 1;
 
@@ -204,12 +200,9 @@ public class GameServiceImpl implements GameService {
                     ", Requested bots: " + requestedBots + ", Max: " + gameEntity.getMaxPlayers());
         }
 
-        //  Buscar perfil de bot (o crear uno por defecto)
         BotProfileEntity botProfile = botProfileRepository.findByLevelAndStrategy(
                         dto.getBotLevel(), dto.getBotStrategy())
                 .orElse(createDefaultBotProfile(dto.getBotLevel(), dto.getBotStrategy()));
-
-        //  Añadir bots
         for (int i = 0; i < requestedBots; i++) {
             PlayerColor availableColorBot = colorManager.getAvailableRandomColor(gameEntity);
             if (availableColorBot == null) {
@@ -233,28 +226,24 @@ public class GameServiceImpl implements GameService {
     @Transactional
     @Override
     public Game startGame(String gameCode) {
-        //  Buscar partida
+
         GameEntity gameEntity = gameRepository.findByGameCode(gameCode)
                 .orElseThrow(() -> new GameNotFoundException("Game not found with code: " + gameCode));
 
-        //  Validar estado
+
         if (gameEntity.getStatus() != GameState.WAITING_FOR_PLAYERS) {
             throw new InvalidGameStateException("Cannot start game. Current state: " + gameEntity.getStatus());
         }
 
-        // Validar mínimo de jugadores
         int playerCount = gameEntity.getPlayers().size();
         if (playerCount < 2) {
             throw new InvalidGameStateException("Minimum 2 players required to start. Current: " + playerCount);
         }
 
-        //  Cambiar estado
         gameEntity.setStatus(GameState.IN_PROGRESS);
         gameEntity.setStartedAt(java.time.LocalDateTime.now());
         gameEntity.setCurrentTurn(1);
         gameEntity.setCurrentPlayerIndex(0);
-
-        //  Cambiar estado de jugadores
         gameEntity.getPlayers().forEach(player ->
                 player.setStatus(PlayerStatus.ACTIVE));
 

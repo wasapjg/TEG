@@ -1,6 +1,7 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 import ar.edu.utn.frc.tup.piii.dtos.bot.AddBotsDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.GameCreationDto;
+import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.JoinGameDto;
 import ar.edu.utn.frc.tup.piii.exceptions.*;
 import ar.edu.utn.frc.tup.piii.model.Game;
@@ -66,6 +67,8 @@ public interface GameService {
      */
     @Transactional
     Game createNewGame(GameCreationDto dto);
+
+    GameResponseDto getGameByCode(String gameCode);
 
     /**
      * Allows a user to join an existing game.

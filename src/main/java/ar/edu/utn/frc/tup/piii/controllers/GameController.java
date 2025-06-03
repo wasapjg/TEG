@@ -6,18 +6,18 @@ import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.JoinGameDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.StartGameDto;
 import ar.edu.utn.frc.tup.piii.exceptions.ForbiddenException;
+import ar.edu.utn.frc.tup.piii.exceptions.GameNotFoundException;
 import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Objects;
 
-/**
- * Controlador de partidas sin JWT. El cliente envía userId “en crudo” en cada DTO.
- */
+
 @RestController
 @RequestMapping("/api/games")
 public class GameController {
@@ -29,7 +29,7 @@ public class GameController {
     private GameMapper gameMapper;
 
     /**
-     * RF003 – Crear nueva partida.
+     * – Crear nueva partida.
      * Recibe GameCreationDto con:
      *  - createdByUserId (Long)
      *  - maxPlayers       (Integer)
@@ -47,8 +47,21 @@ public class GameController {
         return ResponseEntity.status(201).body(response);
     }
 
+    //obitene los datos completos del juego a travez del gamecode
+    @GetMapping("/{gameCode}")
+    public ResponseEntity<GameResponseDto> getGameByCode(@PathVariable String gameCode) {
+        try {
+            GameResponseDto game = gameService.getGameByCode(gameCode);
+            return ResponseEntity.ok(game);
+        } catch (GameNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     /**
-     * RF004 – Unirse a partida existente.
+     * -Unirse a partida existente.
      * Recibe JoinGameDto con:
      *  - gameCode (String)
      *  - userId   (Long)
@@ -64,7 +77,7 @@ public class GameController {
     }
 
     /**
-     * RF003.1 / RF008 – Añadir bots a la partida (solo el anfitrión).
+     * – Añadir bots a la partida (solo el anfitrión).
      * Recibe AddBotsDto con:
      *  - gameCode     (String)
      *  - numberOfBots (Integer)
@@ -77,9 +90,12 @@ public class GameController {
         if (dto.getGameCode() == null || dto.getRequesterId() == null) {
             throw new IllegalArgumentException("Debe enviar gameCode y requesterId en el AddBotsDto");
         }
-        // Validamos que quien llama sea el creador (host) de la partida
         Game existing = gameService.findByGameCode(dto.getGameCode());
-        if (!existing.getCreatedByUserId().equals(dto.getRequesterId())) {
+
+        if (existing.getCreatedByUserId() == null) {
+            throw new IllegalStateException("Error interno: createdByUserId es null para gameCode=" + dto.getGameCode());
+        }
+        if (! dto.getRequesterId().equals(existing.getCreatedByUserId())) {
             throw new ForbiddenException("Solo el anfitrión puede agregar bots a la partida");
         }
         Game updatedGame = gameService.addBotsToGame(dto);
@@ -87,8 +103,9 @@ public class GameController {
         return ResponseEntity.ok(response);
     }
 
+
     /**
-     * RF005.2 – Iniciar la partida (solo el anfitrión).
+     * Iniciar la partida (solo el anfitrión).
      * Recibe StartGameDto con:
      *  - gameCode (String)
      *  - userId   (Long)
