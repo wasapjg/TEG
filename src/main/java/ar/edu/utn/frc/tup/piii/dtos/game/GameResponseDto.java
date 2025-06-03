@@ -1,10 +1,12 @@
 package ar.edu.utn.frc.tup.piii.dtos.game;
 
-//import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
+import ar.edu.utn.frc.tup.piii.dtos.chat.ChatMessageResponseDto;
+import ar.edu.utn.frc.tup.piii.dtos.continent.ContinentResponseDto;
+import ar.edu.utn.frc.tup.piii.dtos.country.CountryResponseDto;
+import ar.edu.utn.frc.tup.piii.dtos.event.GameEventDto;
 import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
-import ar.edu.utn.frc.tup.piii.model.entity.Game;
-import ar.edu.utn.frc.tup.piii.model.enums.GamePhase;
-import ar.edu.utn.frc.tup.piii.model.enums.GameStatus;
+import ar.edu.utn.frc.tup.piii.model.enums.GameState;
+import ar.edu.utn.frc.tup.piii.model.enums.TurnPhase;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,8 +15,11 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
+/**
+ * DTO para devolver los datos de la partida completa tras cada operación.
+ */
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -23,8 +28,8 @@ public class GameResponseDto {
     private Long id;
     private String gameCode;
     private String createdByUsername;
-    private GameStatus status;
-    private GamePhase currentPhase;
+    private GameState state;
+    private TurnPhase currentPhase;
     private Integer currentTurn;
     private Integer currentPlayerIndex;
     private Integer maxPlayers;
@@ -34,35 +39,25 @@ public class GameResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime startedAt;
     private LocalDateTime finishedAt;
+
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<PlayerResponseDto> players;
+
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private Map<Long, CountryResponseDto> territories;
+
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private List<ContinentResponseDto> continents;
+
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private List<GameEventDto> recentEvents;
+
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private List<ChatMessageResponseDto> recentMessages;
+
     private String currentPlayerName;
 
-    public static GameResponseDto fromEntity(Game game) {
-        return GameResponseDto.builder()
-                .id(game.getId())
-                .gameCode(game.getGameCode())
-                .createdByUsername(game.getCreatedBy().getUsername())
-                .status(game.getStatus())
-                .currentPhase(game.getCurrentPhase())
-                .currentTurn(game.getCurrentTurn())
-                .currentPlayerIndex(game.getCurrentPlayerIndex())
-                .maxPlayers(game.getMaxPlayers())
-                .turnTimeLimit(game.getTurnTimeLimit())
-                .chatEnabled(game.getChatEnabled())
-                .pactsAllowed(game.getPactsAllowed())
-                .createdAt(game.getCreatedAt())
-                .startedAt(game.getStartedAt())
-                .finishedAt(game.getFinishedAt())
-                .players(game.getPlayers().stream()
-                        .map(PlayerResponseDto::fromEntity)
-                        .collect(Collectors.toList()))
-                .currentPlayerName(
-                        game.getPlayers().size() > game.getCurrentPlayerIndex()
-                                ? PlayerResponseDto.fromEntity(game.getPlayers().get(game.getCurrentPlayerIndex())).getUsername()
-                                : null
-                )
-                .build();
-    }
-
+    private Boolean canStart;
+    private Boolean isGameOver;
+    private String winnerName;
 }

@@ -1,125 +1,128 @@
 package ar.edu.utn.frc.tup.piii.controllers;
 
 import ar.edu.utn.frc.tup.piii.dtos.bot.AddBotsDto;
-import ar.edu.utn.frc.tup.piii.dtos.bot.BotCreateDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.GameCreationDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.JoinGameDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.KickPlayerDto;
-import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
-import ar.edu.utn.frc.tup.piii.model.entity.Game;
-import ar.edu.utn.frc.tup.piii.model.entity.Player;
-import ar.edu.utn.frc.tup.piii.model.entity.User;
-import ar.edu.utn.frc.tup.piii.model.enums.BotLevel;
-import ar.edu.utn.frc.tup.piii.model.enums.BotStrategy;
+import ar.edu.utn.frc.tup.piii.dtos.game.StartGameDto;
+import ar.edu.utn.frc.tup.piii.exceptions.ForbiddenException;
+import ar.edu.utn.frc.tup.piii.exceptions.GameNotFoundException;
+import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
+import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
-import ar.edu.utn.frc.tup.piii.service.interfaces.PlayerService;
-import ar.edu.utn.frc.tup.piii.service.interfaces.UserService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
+
 
 @RestController
 @RequestMapping("/api/games")
-@RequiredArgsConstructor
 public class GameController {
 
-    private final GameService gameService;
-    private final UserService userService;
-    private final PlayerService playerService;
+    @Autowired
+    private GameService gameService;
 
-    @PostMapping("/create")
-    public ResponseEntity<GameResponseDto> create(@RequestBody GameCreationDto dto) {
-        User creator = userService.findById(dto.getCreatedByUserId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    @Autowired
+    private GameMapper gameMapper;
 
-        Game game = gameService.createGame(dto);
-        return ResponseEntity.ok(toDto(game));
+    /**
+     * – Crear nueva partida.
+     * Recibe GameCreationDto con:
+     *  - createdByUserId (Long)
+     *  - maxPlayers       (Integer)
+     *  - turnTimeLimit    (Integer)
+     *  - chatEnabled      (Boolean)
+     *  - pactsAllowed     (Boolean)
+     */
+    @PostMapping
+    public ResponseEntity<GameResponseDto> createGame(@RequestBody GameCreationDto dto) {
+        if (dto.getCreatedByUserId() == null) {
+            throw new IllegalArgumentException("Debe enviar createdByUserId en el GameCreationDto");
+        }
+        Game createdGame = gameService.createNewGame(dto);
+        GameResponseDto response = gameMapper.toResponseDto(createdGame);
+        return ResponseEntity.status(201).body(response);
     }
 
-
-    @PostMapping("/join")
-    public ResponseEntity<GameResponseDto> join(@RequestBody JoinGameDto dto) {
-        User user = userService.findById(dto.getUserId())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        Game game = gameService.joinGame(dto.getGameCode(), dto.getUserId());
-        return ResponseEntity.ok(toDto(game));
-    }
-
-    @PostMapping("/bots")
-    public ResponseEntity<?> addBots(@RequestBody AddBotsDto dto) {
+    //obitene los datos completos del juego a travez del gamecode
+    @GetMapping("/{gameCode}")
+    public ResponseEntity<GameResponseDto> getGameByCode(@PathVariable String gameCode) {
         try {
-            Game game = gameService.addBots(
-                    dto.getGameCode(),
-                    dto.getCount(),
-                    dto.getBotLevel(),
-                    dto.getBotStrategy()
-            );
-
-            return ResponseEntity.ok(GameResponseDto.fromEntity(game));
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (IllegalStateException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+            GameResponseDto game = gameService.getGameByCode(gameCode);
+            return ResponseEntity.ok(game);
+        } catch (GameNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error interno");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-
-
-
-
-
-
-    @PostMapping("/kick")
-    public ResponseEntity<GameResponseDto> kick(@RequestBody KickPlayerDto dto) {
-        Game game = gameService.kickPlayer(dto.getGameCode(), dto.getPlayerId());
-        return ResponseEntity.ok(toDto(game));
+    /**
+     * -Unirse a partida existente.
+     * Recibe JoinGameDto con:
+     *  - gameCode (String)
+     *  - userId   (Long)
+     */
+    @PostMapping("/join")
+    public ResponseEntity<GameResponseDto> joinGame(@RequestBody JoinGameDto dto) {
+        if (dto.getGameCode() == null || dto.getUserId() == null) {
+            throw new IllegalArgumentException("Debe enviar gameCode y userId en el JoinGameDto");
+        }
+        Game updatedGame = gameService.joinGame(dto);
+        GameResponseDto response = gameMapper.toResponseDto(updatedGame);
+        return ResponseEntity.ok(response);
     }
 
-    // Método auxiliar para convertir entidad Game → GameResponseDto
-    private GameResponseDto toDto(Game game) {
-        List<PlayerResponseDto> players = game.getPlayers().stream()
-                .map(this::playerToDto)
-                .collect(Collectors.toList());
+    /**
+     * – Añadir bots a la partida (solo el anfitrión).
+     * Recibe AddBotsDto con:
+     *  - gameCode     (String)
+     *  - numberOfBots (Integer)
+     *  - botLevel     (BotLevel)
+     *  - botStrategy  (BotStrategy)
+     *  - requesterId  (Long)
+     */
+    @PostMapping("/add-bots")
+    public ResponseEntity<GameResponseDto> addBotsToGame(@RequestBody AddBotsDto dto) {
+        if (dto.getGameCode() == null || dto.getRequesterId() == null) {
+            throw new IllegalArgumentException("Debe enviar gameCode y requesterId en el AddBotsDto");
+        }
+        Game existing = gameService.findByGameCode(dto.getGameCode());
 
-        String currentPlayerName = game.getCurrentPlayer() != null
-                ? game.getCurrentPlayer().getDisplayName()
-                : null;
-
-        return GameResponseDto.builder()
-                .id(game.getId())
-                .gameCode(game.getGameCode())
-                .createdByUsername(game.getCreatedBy().getUsername())
-                .status(game.getStatus())
-                .currentPhase(game.getCurrentPhase())
-                .currentTurn(game.getCurrentTurn())
-                .currentPlayerIndex(game.getCurrentPlayerIndex())
-                .maxPlayers(game.getMaxPlayers())
-                .turnTimeLimit(game.getTurnTimeLimit())
-                .chatEnabled(game.getChatEnabled())
-                .pactsAllowed(game.getPactsAllowed())
-                .createdAt(game.getCreatedAt())
-                .startedAt(game.getStartedAt())
-                .finishedAt(game.getFinishedAt())
-                .players(players)
-                .currentPlayerName(currentPlayerName)
-                .build();
+        if (existing.getCreatedByUserId() == null) {
+            throw new IllegalStateException("Error interno: createdByUserId es null para gameCode=" + dto.getGameCode());
+        }
+        if (! dto.getRequesterId().equals(existing.getCreatedByUserId())) {
+            throw new ForbiddenException("Solo el anfitrión puede agregar bots a la partida");
+        }
+        Game updatedGame = gameService.addBotsToGame(dto);
+        GameResponseDto response = gameMapper.toResponseDto(updatedGame);
+        return ResponseEntity.ok(response);
     }
 
-    // Adaptar según tu PlayerResponseDto
-    private PlayerResponseDto playerToDto(Player p) {
-        return PlayerResponseDto.builder()
-                .id(p.getId())
-                .username(p.getDisplayName())
-                .status(p.getStatus().name())
-                // añade más campos si lo deseas
-                .build();
+
+    /**
+     * Iniciar la partida (solo el anfitrión).
+     * Recibe StartGameDto con:
+     *  - gameCode (String)
+     *  - userId   (Long)
+     */
+    @PostMapping("/start")
+    public ResponseEntity<GameResponseDto> startGame(@RequestBody StartGameDto dto) {
+        if (dto.getGameCode() == null || dto.getUserId() == null) {
+            throw new IllegalArgumentException("Debe enviar gameCode y userId en el StartGameDto");
+        }
+        Game existing = gameService.findByGameCode(dto.getGameCode());
+        if (!Objects.equals(existing.getCreatedByUserId(), dto.getUserId())) {
+            throw new ForbiddenException("Solo el anfitrión puede iniciar la partida");
+        }
+        Game startedGame = gameService.startGame(dto.getGameCode());
+
+        GameResponseDto response = gameMapper.toResponseDto(startedGame);
+        return ResponseEntity.ok(response);
     }
+
 }

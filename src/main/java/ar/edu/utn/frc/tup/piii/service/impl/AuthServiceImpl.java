@@ -1,50 +1,77 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 
-import ar.edu.utn.frc.tup.piii.dtos.common.JwtResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.common.UserLoginDto;
-import ar.edu.utn.frc.tup.piii.dtos.common.UserRegisterDto;
-import ar.edu.utn.frc.tup.piii.exception.InvalidCredentialsException;
-import ar.edu.utn.frc.tup.piii.exception.UserNotFoundException;
-import ar.edu.utn.frc.tup.piii.model.entity.User;
-import ar.edu.utn.frc.tup.piii.repository.UserRepository;
+import ar.edu.utn.frc.tup.piii.dtos.auth.Credential;
+import ar.edu.utn.frc.tup.piii.dtos.auth.EmailIdentity;
+import ar.edu.utn.frc.tup.piii.dtos.auth.UsernameIdentity;
+import ar.edu.utn.frc.tup.piii.dtos.user.UserRegisterDto;
+import ar.edu.utn.frc.tup.piii.exceptions.EmailAlreadyExistsException;
+import ar.edu.utn.frc.tup.piii.exceptions.InvalidCredentialsException;
+import ar.edu.utn.frc.tup.piii.exceptions.UserAlreadyExistsException;
+import ar.edu.utn.frc.tup.piii.mappers.UserMapper;
+import ar.edu.utn.frc.tup.piii.model.User;
 import ar.edu.utn.frc.tup.piii.service.interfaces.AuthService;
-import ar.edu.utn.frc.tup.piii.utils.JwtUtils;
+import ar.edu.utn.frc.tup.piii.service.interfaces.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 public class AuthServiceImpl implements AuthService {
-    private final UserRepository repo;
+
     private final BCryptPasswordEncoder encoder;
-    private final JwtUtils jwtUtils;
+    private final UserService userService;
 
-    public AuthServiceImpl(UserRepository repo, JwtUtils jwtUtils) {
-        this.repo = repo;
-        this.encoder = new BCryptPasswordEncoder();
-        this.jwtUtils = jwtUtils;
+    @Autowired
+    public AuthServiceImpl(UserService userService, BCryptPasswordEncoder encoder) {
+        this.userService = userService;
+        this.encoder = encoder;
     }
 
     @Override
-    public JwtResponseDto register(UserRegisterDto dto) {
-        if (repo.findUserByUsername(dto.getUsername()).isPresent()){
-            throw  new RuntimeException("This user already exist");
+    public User register(UserRegisterDto dto) {
+        if (userService.existsByUserName(dto.getUsername())) {
+            throw new UserAlreadyExistsException("Username already exists: " + dto.getUsername());
         }
-        User u = new User();
-        u.setUsername(dto.getUsername());
-        u.setPasswordHash(encoder.encode(dto.getPassword()));
-        repo.save(u);
-        String token = jwtUtils.generateToken(dto.getUsername());
-        return new JwtResponseDto(token);
+        if (userService.existsByEmail(dto.getEmail())){
+            throw new EmailAlreadyExistsException("Email already registered: " + dto.getEmail());
+        }
+
+        User user = UserMapper.toModel(dto);
+        user.setPasswordHash(encoder.encode(dto.getPassword()));
+        userService.save(user);
+        return user;
     }
 
     @Override
-    public JwtResponseDto login(UserLoginDto dto) {
-        User u = repo.findUserByUsername(dto.getUsername())
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-        if (!encoder.matches(dto.getPassword(), u.getPasswordHash())){
-            throw new InvalidCredentialsException("Invalid Password");
+    public User login(Credential credential) {
+        if(credential.getIdentity() instanceof UsernameIdentity){
+            return loginWithIdentity((UsernameIdentity) credential.getIdentity(), credential.getPassword());
+        } else {
+            return loginWithIdentity((EmailIdentity) credential.getIdentity(), credential.getPassword());
         }
-        String token = jwtUtils.generateToken(u.getUsername());
-        return new JwtResponseDto(token);
+    }
+
+    private User loginWithIdentity(UsernameIdentity identity, String password) {
+        User user = userService.getUserByUserName(identity.getUserName());
+        if(!encoder.matches(password, user.getPasswordHash())) {
+            throw new InvalidCredentialsException("Invalid user or password");
+        }
+        return updateLastLogin(user);
+    }
+
+    private User loginWithIdentity(EmailIdentity identity, String password) {
+        User user = userService.getUserByEmailAndPasswordHash(identity.getEmail(), password);
+        if(!encoder.matches(password, user.getPasswordHash())) {
+            throw new InvalidCredentialsException("Invalid email or password");
+        }
+        return updateLastLogin(user);
+    }
+
+    private User updateLastLogin(User user) {
+        user.setLastLogin(LocalDateTime.now());
+        userService.save(user);
+        return user;
     }
 }
