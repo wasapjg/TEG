@@ -1,6 +1,7 @@
 package ar.edu.utn.frc.tup.piii.model;
 
 import ar.edu.utn.frc.tup.piii.model.enums.GameState;
+import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import ar.edu.utn.frc.tup.piii.model.enums.TurnPhase;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -39,6 +40,9 @@ public class Game {
     private Map<Long, Territory> territories = new HashMap<>();
 
     @Builder.Default
+    private List<Continent> continents = new ArrayList<>();
+
+    @Builder.Default
     private List<Card> deck = new ArrayList<>();
 
     @Builder.Default
@@ -48,9 +52,9 @@ public class Game {
     private List<ChatMessage> chatMessages = new ArrayList<>();
 
     // Business logic methods
-    public boolean hasSlot() {
-        return players.size() < maxPlayers;
-    }
+//    public boolean hasSlot() {
+//        return players.size() < maxPlayers;
+//    }
 
     public boolean isOver() {
         return state == GameState.FINISHED;
@@ -78,6 +82,15 @@ public class Game {
         return players.size() >= 2 && state == GameState.WAITING_FOR_PLAYERS;
     }
 
+    public long getActivePlayerCount() {
+        return players.stream()
+                .filter(p -> p.getStatus() != PlayerStatus.ELIMINATED)
+                .count();
+    }
+
+    public boolean hasSlot() {
+        return getActivePlayerCount() < maxPlayers;
+    }
 
 
 

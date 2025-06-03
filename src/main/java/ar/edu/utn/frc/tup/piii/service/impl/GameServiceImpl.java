@@ -1,8 +1,6 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 import ar.edu.utn.frc.tup.piii.dtos.bot.AddBotsDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.GameCreationDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
-import ar.edu.utn.frc.tup.piii.dtos.game.JoinGameDto;
+import ar.edu.utn.frc.tup.piii.dtos.game.*;
 import ar.edu.utn.frc.tup.piii.entities.BotProfileEntity;
 import ar.edu.utn.frc.tup.piii.entities.GameEntity;
 import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
@@ -10,23 +8,30 @@ import ar.edu.utn.frc.tup.piii.entities.UserEntity;
 import ar.edu.utn.frc.tup.piii.exceptions.*;
 import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
 import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.model.Player;
+import ar.edu.utn.frc.tup.piii.model.User;
 import ar.edu.utn.frc.tup.piii.model.enums.*;
 import ar.edu.utn.frc.tup.piii.repository.BotProfileRepository;
 import ar.edu.utn.frc.tup.piii.repository.GameRepository;
 import ar.edu.utn.frc.tup.piii.repository.PlayerRepository;
 import ar.edu.utn.frc.tup.piii.repository.UserRepository;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
+import ar.edu.utn.frc.tup.piii.service.interfaces.UserService;
 import ar.edu.utn.frc.tup.piii.utils.CodeGenerator;
 import ar.edu.utn.frc.tup.piii.utils.ColorManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Random;
 
 @Service
 public class GameServiceImpl implements GameService {
+
+    @Autowired
+    private UserService userService;
 
     @Autowired
     private GameRepository gameRepository;
@@ -89,47 +94,40 @@ public class GameServiceImpl implements GameService {
 
 
 
-    @Transactional
     @Override
-    public Game createNewGame(GameCreationDto dto) {
-        UserEntity creator = userRepository.findById(dto.getCreatedByUserId())
-                .orElseThrow(() -> new UserNotFoundException("User not found with id: " + dto.getCreatedByUserId()));
-
-        if (!creator.getIsActive()) {
-            throw new InvalidGameStateException("User is not active");
-        }
-
-        if (dto.getMaxPlayers() != null && (dto.getMaxPlayers() < 2 || dto.getMaxPlayers() > 6)) {
-            throw new InvalidGameConfigurationException("Max players must be between 2 and 6 for TEG");
-        }
-
+    @Transactional
+    public Game createLobbyWithDefaults(Long hostUserId) {
+        UserEntity host = userRepository.findById(hostUserId)
+                .orElseThrow(() -> new UserNotFoundException("Usuario no encontrado con id: " + hostUserId));
         String gameCode = codeGenerator.generateUniqueCode();
+        if (gameRepository.existsByGameCode(gameCode)) {
+            throw new InvalidGameConfigurationException("El código generado ya existe: " + gameCode);
+        }
 
-        //  Crear entidad de juego
         GameEntity gameEntity = new GameEntity();
         gameEntity.setGameCode(gameCode);
-        gameEntity.setCreatedBy(creator);
+        gameEntity.setCreatedBy(host);
         gameEntity.setStatus(GameState.WAITING_FOR_PLAYERS);
-        gameEntity.setMaxPlayers(dto.getMaxPlayers() != null ? dto.getMaxPlayers() : 6);
-        gameEntity.setTurnTimeLimit(dto.getTurnTimeLimit());
-        gameEntity.setChatEnabled(dto.getChatEnabled() != null ? dto.getChatEnabled() : true);
-        gameEntity.setPactsAllowed(dto.getPactsAllowed() != null ? dto.getPactsAllowed() : false);
 
+        gameEntity.setMaxPlayers(6);
+        gameEntity.setTurnTimeLimit(120);
+        gameEntity.setChatEnabled(true);
+        gameEntity.setPactsAllowed(false);
 
         GameEntity savedGame = gameRepository.save(gameEntity);
 
-
-        PlayerEntity creatorPlayer = new PlayerEntity();
-        creatorPlayer.setUser(creator);
-        creatorPlayer.setGame(savedGame);
-        creatorPlayer.setColor(PlayerColor.RED);
-        creatorPlayer.setStatus(PlayerStatus.WAITING);
-        creatorPlayer.setSeatOrder(1);
-
-        playerRepository.save(creatorPlayer);
+        PlayerEntity hostPlayer = new PlayerEntity();
+        hostPlayer.setUser(host);
+        hostPlayer.setGame(savedGame);
+        hostPlayer.setColor(PlayerColor.RED);
+        hostPlayer.setStatus(PlayerStatus.WAITING);
+        hostPlayer.setSeatOrder(1); // primer asiento
+        playerRepository.save(hostPlayer);
 
         return gameMapper.toModel(savedGame);
     }
+
+
 
     @Override
     @Transactional(readOnly = true)
@@ -146,23 +144,33 @@ public class GameServiceImpl implements GameService {
     public Game joinGame(JoinGameDto dto) {
         GameEntity gameEntity = gameRepository.findByGameCode(dto.getGameCode())
                 .orElseThrow(() -> new GameNotFoundException("Game not found with code: " + dto.getGameCode()));
+
         if (gameEntity.getStatus() != GameState.WAITING_FOR_PLAYERS) {
             throw new InvalidGameStateException("Game is not accepting new players. Current state: " + gameEntity.getStatus());
         }
+
         UserEntity user = userRepository.findById(dto.getUserId())
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + dto.getUserId()));
-        if (!user.getIsActive()) {
-            throw new InvalidGameStateException("User is not active");
-        }
-        boolean alreadyJoined = gameEntity.getPlayers().stream()
-                .anyMatch(p -> p.getUser() != null && p.getUser().getId().equals(dto.getUserId()));
 
-        if (alreadyJoined) {
-            throw new InvalidGameStateException("User is already in this game");
+        Optional<PlayerEntity> existingPlayerOpt = gameEntity.getPlayers().stream()
+                .filter(p -> p.getUser() != null && p.getUser().getId().equals(dto.getUserId()))
+                .findFirst();
+
+        if (existingPlayerOpt.isPresent()) {
+            PlayerEntity existingPlayer = existingPlayerOpt.get();
+
+            if (existingPlayer.getStatus() != PlayerStatus.ELIMINATED) {
+                throw new InvalidGameStateException("User is already in this game.");
+            } else {
+                throw new InvalidGameStateException("User was already eliminated from this game.");
+            }
         }
 
-        int currentPlayers = gameEntity.getPlayers().size();
-        if (currentPlayers >= gameEntity.getMaxPlayers()) {
+        long activePlayers = gameEntity.getPlayers().stream()
+                .filter(p -> p.getStatus() != PlayerStatus.ELIMINATED)
+                .count();
+
+        if (activePlayers >= gameEntity.getMaxPlayers()) {
             throw new GameFullException("Game is full. Max players: " + gameEntity.getMaxPlayers());
         }
 
@@ -176,12 +184,13 @@ public class GameServiceImpl implements GameService {
         newPlayer.setGame(gameEntity);
         newPlayer.setColor(availableColor);
         newPlayer.setStatus(PlayerStatus.WAITING);
-        newPlayer.setSeatOrder(currentPlayers + 1);
+        newPlayer.setSeatOrder(gameEntity.getPlayers().size() + 1);  // cuidado: no reordena huecos
 
         playerRepository.save(newPlayer);
 
         return gameMapper.toModel(gameEntity);
     }
+
 
 
     @Transactional
@@ -268,4 +277,98 @@ public class GameServiceImpl implements GameService {
 
         return botProfileRepository.save(botProfile);
     }
+
+
+
+
+    @Transactional
+    @Override
+    public Game updateGameSettings(String gameCode, UpdateGameSettingsDto dto) {
+
+        GameEntity gameEntity = gameRepository.findForSettings(gameCode)
+                .orElseThrow(() -> new GameNotFoundException("Game not found with code: " + gameCode));
+
+        if (gameEntity.getStatus() != GameState.WAITING_FOR_PLAYERS) {
+            throw new InvalidGameStateException("Cannot modify settings once game has started");
+        }
+
+        if (!gameEntity.getCreatedBy().getId().equals(dto.getRequesterId())) {
+            throw new ForbiddenException("Only the host can modify game settings");
+        }
+
+        if (dto.getMaxPlayers() != null) {
+            if (dto.getMaxPlayers() < 2 || dto.getMaxPlayers() > 6) {
+                throw new InvalidGameConfigurationException("Max players must be between 2 and 6");
+            }
+
+            int currentPlayerCount = gameEntity.getPlayers().size();
+            if (dto.getMaxPlayers() < currentPlayerCount) {
+                throw new InvalidGameConfigurationException("Cannot set max players below current player count: " + currentPlayerCount);
+            }
+        }
+
+        if (dto.getTurnTimeLimit() != null && dto.getTurnTimeLimit() <= 0) {
+            throw new InvalidGameConfigurationException("Turn time limit must be greater than 0");
+        }
+
+        if (dto.getMaxPlayers() != null) {
+            gameEntity.setMaxPlayers(dto.getMaxPlayers());
+        }
+        if (dto.getTurnTimeLimit() != null) {
+            gameEntity.setTurnTimeLimit(dto.getTurnTimeLimit());
+        }
+        if (dto.getChatEnabled() != null) {
+            gameEntity.setChatEnabled(dto.getChatEnabled());
+        }
+        if (dto.getPactsAllowed() != null) {
+            gameEntity.setPactsAllowed(dto.getPactsAllowed());
+        }
+        GameEntity savedGame = gameRepository.save(gameEntity);
+        return gameMapper.toModel(savedGame);
+    }
+
+    @Override
+    @Transactional
+    public Game kickPlayer(KickPlayerDto dto)
+            throws GameNotFoundException, PlayerNotFoundException, InvalidGameStateException, ForbiddenException {
+
+        GameEntity gameEntity = gameRepository.findByGameCode(dto.getGameCode())
+                .orElseThrow(() ->
+                        new GameNotFoundException("Game not found with code: " + dto.getGameCode())
+                );
+
+        if (gameEntity.getStatus() != GameState.WAITING_FOR_PLAYERS) {
+            throw new InvalidGameStateException(
+                    "Cannot kick player. Game is not in WAITING_FOR_PLAYERS state. Current: "
+                            + gameEntity.getStatus()
+            );
+        }
+
+        PlayerEntity playerEntity = playerRepository.findByGameAndUserId(gameEntity, dto.getPlayerId())
+                .orElseThrow(() ->
+                        new PlayerNotFoundException(
+                                "Player with id " + dto.getPlayerId() +
+                                        " not found in game " + dto.getGameCode()
+                        )
+                );
+
+        UserEntity hostUser = gameEntity.getCreatedBy();
+        if (hostUser.getId().equals(playerEntity.getUser().getId())) {
+            throw new ForbiddenException("Cannot kick the host of the game");
+        }
+        if (playerEntity.getBotProfile()!=null) {
+            playerRepository.delete(playerEntity);
+        } else {
+            playerEntity.setStatus(PlayerStatus.ELIMINATED);
+            playerEntity.setEliminatedAt(LocalDateTime.now());
+            playerRepository.save(playerEntity);
+        }
+
+
+        //al eliminar un jugador no se reasigna el orden del juego por lo que el orden del juego
+        //va a tener el mismo que antes
+        //problemas para mi yo del futuro
+        return gameMapper.toModel(gameEntity);
+    }
+
 }

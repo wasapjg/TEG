@@ -20,6 +20,7 @@ public interface PlayerRepository extends JpaRepository<PlayerEntity, Long> {
     List<PlayerEntity> findByGameAndStatus(GameEntity game, PlayerStatus status);
     Optional<PlayerEntity> findByGameAndUser(GameEntity game, UserEntity user);
     Optional<PlayerEntity> findByGameAndColor(GameEntity game, PlayerColor color);
+    Optional<PlayerEntity> findByGameAndUserId(GameEntity game, Long userId);
 
     @Query("SELECT p FROM PlayerEntity p WHERE p.game = :game AND p.status != 'ELIMINATED' ORDER BY p.seatOrder")
     List<PlayerEntity> findActivePlayersByGame(@Param("game") GameEntity game);

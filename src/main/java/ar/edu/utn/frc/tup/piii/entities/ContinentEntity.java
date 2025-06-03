@@ -23,6 +23,10 @@ public class ContinentEntity {
     @Column(name = "bonus_armies", nullable = false)
     private Integer bonusArmies;
 
+    @ManyToOne
+    @JoinColumn(name = "game_id")
+    private GameEntity game;
+
     @OneToMany(mappedBy = "continent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<CountryEntity> countries = new HashSet<>();
 }

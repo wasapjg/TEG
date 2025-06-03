@@ -86,11 +86,9 @@ public class PlayerMapper {
                 .eliminatedAt(player.getEliminatedAt())
                 .territoryIds(player.getTerritoryIds())
                 .territoryCount(player.getTerritoryCount())
-                .totalArmies(null); // Si quisieras calcular total armies, necesitarías el mapa de territorios
+                .totalArmies(null);
 
-//         -----------------------------
-//         Mano de cartas (hand): si quisieras mapear a CardResponseDto, descomenta:
-//         -----------------------------
+
         if (player.getHand() != null && !player.getHand().isEmpty()) {
             builder.hand(
                     player.getHand().stream()
@@ -98,10 +96,7 @@ public class PlayerMapper {
                             .collect(Collectors.toList())
             );
         }
-
-//         -----------------------------
-//         Objetivo (Objective): si quisieras mapear a ObjectiveResponseDto, descomenta:
-//         -----------------------------
+        
         if (player.getObjective() != null) {
             builder.objective(objectiveMapper.toResponseDto(player.getObjective()));
         }
