@@ -2,10 +2,7 @@ package ar.edu.utn.frc.tup.piii.controllers;
 
 import ar.edu.utn.frc.tup.piii.dtos.bot.AddBotsDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.*;
-import ar.edu.utn.frc.tup.piii.exceptions.ForbiddenException;
-import ar.edu.utn.frc.tup.piii.exceptions.GameNotFoundException;
-import ar.edu.utn.frc.tup.piii.exceptions.InvalidGameConfigurationException;
-import ar.edu.utn.frc.tup.piii.exceptions.InvalidGameStateException;
+import ar.edu.utn.frc.tup.piii.exceptions.*;
 import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
@@ -157,5 +154,43 @@ public class GameController {
         GameResponseDto response = gameMapper.toResponseDto(updatedGame);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Expulsa a un jugador de la partida (solo el host puede hacerlo).
+     * Recibe: { "gameCode": "...", "playerId": 2 }
+     * Retorna: 200 + GameResponseDto actualizado (sin el jugador expulsado).
+     */
+    @PostMapping("/kick-player")
+    public ResponseEntity<GameResponseDto> kickPlayer(@RequestBody KickPlayerDto dto) {
+        if (dto.getGameCode() == null || dto.getPlayerId() == null) {
+            throw new IllegalArgumentException("Debe enviar gameCode y playerId en el KickPlayerDto");
+        }
+
+        try {
+            Game updatedGame = gameService.kickPlayer(dto);
+            GameResponseDto response = gameMapper.toResponseDto(updatedGame);
+            return ResponseEntity.ok(response);
+
+        } catch (GameNotFoundException | PlayerNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+
+        } catch (InvalidGameStateException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(GameResponseDto.builder()
+                            .gameCode(dto.getGameCode())
+                            .winnerName(e.getMessage())
+                            .build());
+
+        } catch (ForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(GameResponseDto.builder()
+                            .gameCode(dto.getGameCode())
+                            .winnerName(e.getMessage())
+                            .build());
+        }
     }
 }

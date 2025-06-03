@@ -2,6 +2,7 @@ package ar.edu.utn.frc.tup.piii.mappers;
 
 import ar.edu.utn.frc.tup.piii.dtos.continent.ContinentResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.country.CountryResponseDto;
+import ar.edu.utn.frc.tup.piii.entities.ContinentEntity;
 import ar.edu.utn.frc.tup.piii.model.Continent;
 import ar.edu.utn.frc.tup.piii.model.Territory;
 import org.springframework.stereotype.Component;
@@ -47,6 +48,17 @@ public class ContinentMapper {
                         territories
                 ) ? territories.get(model.getCountryIds().get(0)).getOwnerName() : null)
                 .build();
+    }
+
+    public ContinentEntity toEntity(Continent model) {
+        if (model == null) return null;
+
+        ContinentEntity entity = new ContinentEntity();
+        entity.setId(model.getId());
+        entity.setName(model.getName());
+        entity.setBonusArmies(model.getBonusArmies());
+
+        return entity;
     }
 
 }

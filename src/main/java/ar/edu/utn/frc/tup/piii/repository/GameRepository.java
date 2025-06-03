@@ -41,4 +41,6 @@ public interface GameRepository extends JpaRepository<GameEntity, Long> {
 
     @Query("SELECT g FROM GameEntity g " + "LEFT JOIN FETCH g.createdBy " + "LEFT JOIN FETCH g.players " + "WHERE g.gameCode = :gameCode")
     Optional<GameEntity> findForSettings(@Param("gameCode") String gameCode);
+
+
 }

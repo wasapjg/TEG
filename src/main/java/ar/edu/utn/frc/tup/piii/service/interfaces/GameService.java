@@ -106,4 +106,7 @@ public interface GameService {
 
     Game updateGameSettings(String gameCode, UpdateGameSettingsDto dto);
 
+    Game kickPlayer(KickPlayerDto dto)
+            throws GameNotFoundException, PlayerNotFoundException, InvalidGameStateException, ForbiddenException;
+
 }
