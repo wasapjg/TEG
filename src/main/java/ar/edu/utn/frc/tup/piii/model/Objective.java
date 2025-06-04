@@ -1,10 +1,13 @@
 package ar.edu.utn.frc.tup.piii.model;
 
 import ar.edu.utn.frc.tup.piii.model.enums.ObjectiveType;
+import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -18,27 +21,34 @@ public class Objective {
     private Boolean isCommon;
     private Boolean isAchieved;
 
-    public boolean isAchieved(Game game, Player player) {
-        // Implementar lógica de verificación de objetivos
-        switch (type) {
-            case COMMON:
-                return player.getTerritoryCount() >= 30;
-            case OCCUPATION:
-                return checkOccupationObjective(game, player);
-            case DESTRUCTION:
-                return checkDestructionObjective(game, player);
-            default:
-                return false;
+
+
+//    private boolean checkOccupationObjective(Game game, Player player) {
+//        //TODO: Implementar lógica específica para objetivos de ocupación
+//        return false; // Placeholder
+//    }
+//
+//    private boolean checkDestructionObjective(Game game, Player player) {
+//        // TODO: Implementar lógica específica para objetivos de destrucción
+//        return false; // Placeholder
+//    }
+
+    public List<String> getTargetContinents() {
+        if (type == ObjectiveType.OCCUPATION && targetData != null && !targetData.isBlank()) {
+            return List.of(targetData.split("\\s*,\\s*"));
         }
+        return List.of();
     }
 
-    private boolean checkOccupationObjective(Game game, Player player) {
-        // Implementar lógica específica para objetivos de ocupación
-        return false; // Placeholder
+    public PlayerColor getTargetColor() {
+        if (type == ObjectiveType.DESTRUCTION && targetData != null) {
+            try {
+                return PlayerColor.valueOf(targetData.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+        return null;
     }
 
-    private boolean checkDestructionObjective(Game game, Player player) {
-        // Implementar lógica específica para objetivos de destrucción
-        return false; // Placeholder
-    }
 }

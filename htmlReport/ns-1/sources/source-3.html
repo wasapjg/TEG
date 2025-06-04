@@ -1,0 +1,416 @@
+
+
+
+<!DOCTYPE html>
+<html id="htmlId">
+<head>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"> 
+  <title>Coverage Report > GameStateServiceImpl</title>
+  <style type="text/css">
+    @import "../../css/coverage.css";
+    @import "../../css/idea.min.css";
+  </style>
+  <script type="text/javascript" src="../../js/highlight.min.js"></script>
+  <script type="text/javascript" src="../../js/highlightjs-line-numbers.min.js"></script>
+</head>
+
+<body>
+<div class="content">
+<div class="breadCrumbs">
+Current scope:     <a href="../../index.html">all classes</a>
+    <span class="separator">|</span>
+    <a href="../index.html">ar.edu.utn.frc.tup.piii.service.impl</a>
+</div>
+
+<h1>Coverage Summary for Class: GameStateServiceImpl (ar.edu.utn.frc.tup.piii.service.impl)</h1>
+
+<table class="coverageStats">
+
+<tr>
+  <th class="name">Class</th>
+<th class="coverageStat 
+">
+  Method, %
+</th>
+<th class="coverageStat 
+">
+  Branch, %
+</th>
+<th class="coverageStat 
+">
+  Line, %
+</th>
+</tr>
+<tr>
+  <td class="name">GameStateServiceImpl</td>
+<td class="coverageStat">
+  <span class="percent">
+    6,2%
+  </span>
+  <span class="absValue">
+    (1/16)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/102)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    1,1%
+  </span>
+  <span class="absValue">
+    (1/93)
+  </span>
+</td>
+</tr>
+  <tr>
+    <td class="name">GameStateServiceImpl$1</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/1)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/2)
+  </span>
+</td>
+  </tr>
+<tr>
+  <td class="name"><strong>Total</strong></td>
+<td class="coverageStat">
+  <span class="percent">
+    5,9%
+  </span>
+  <span class="absValue">
+    (1/17)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    0%
+  </span>
+  <span class="absValue">
+    (0/102)
+  </span>
+</td>
+<td class="coverageStat">
+  <span class="percent">
+    1,1%
+  </span>
+  <span class="absValue">
+    (1/95)
+  </span>
+</td>
+</tr>
+</table>
+
+<br/>
+<br/>
+
+
+<pre>
+<code class="sourceCode" id="sourceCode">&nbsp;package ar.edu.utn.frc.tup.piii.service.impl;
+&nbsp;
+&nbsp;import ar.edu.utn.frc.tup.piii.model.enums.GameState;
+&nbsp;import ar.edu.utn.frc.tup.piii.model.enums.TurnPhase;
+&nbsp;import ar.edu.utn.frc.tup.piii.model.Game;
+&nbsp;import ar.edu.utn.frc.tup.piii.model.Player;
+&nbsp;import ar.edu.utn.frc.tup.piii.service.interfaces.GameStateService;
+&nbsp;import org.springframework.stereotype.Service;
+&nbsp;
+&nbsp;@Service
+<b class="fc">&nbsp;public class GameStateServiceImpl implements GameStateService {</b>
+&nbsp;
+&nbsp;    // Cambiar estado del juego
+&nbsp;    @Override
+&nbsp;    public boolean changeGameState(Game game, GameState newState) {
+<b class="nc">&nbsp;        GameState currentState = game.getState();</b>
+&nbsp;
+<b class="nc">&nbsp;        switch (currentState) {</b>
+&nbsp;            case WAITING_FOR_PLAYERS:
+<b class="nc">&nbsp;                if (newState == GameState.IN_PROGRESS &amp;&amp; game.canStart()) {</b>
+<b class="nc">&nbsp;                    game.setState(newState);</b>
+<b class="nc">&nbsp;                    game.setCurrentPhase(TurnPhase.REINFORCEMENT);</b>
+<b class="nc">&nbsp;                    return true;</b>
+&nbsp;                }
+&nbsp;                break;
+&nbsp;
+&nbsp;            case IN_PROGRESS:
+<b class="nc">&nbsp;                if (newState == GameState.PAUSED ||</b>
+&nbsp;                        newState == GameState.FINISHED) {
+<b class="nc">&nbsp;                    game.setState(newState);</b>
+<b class="nc">&nbsp;                    return true;</b>
+&nbsp;                }
+&nbsp;                break;
+&nbsp;
+&nbsp;            case PAUSED:
+<b class="nc">&nbsp;                if (newState == GameState.IN_PROGRESS) {</b>
+<b class="nc">&nbsp;                    game.setState(newState);</b>
+<b class="nc">&nbsp;                    return true;</b>
+&nbsp;                }
+&nbsp;                break;
+&nbsp;
+&nbsp;            case FINISHED:
+&nbsp;                // No se puede cambiar desde FINISHED
+<b class="nc">&nbsp;                return false;</b>
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        return false; // Transición no válida</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // Cambiar fase del turno
+&nbsp;    @Override
+&nbsp;    public boolean changeTurnPhase(Game game, TurnPhase newPhase) {
+<b class="nc">&nbsp;        if (game.getState() != GameState.IN_PROGRESS) {</b>
+<b class="nc">&nbsp;            return false;</b>
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        TurnPhase currentPhase = game.getCurrentPhase();</b>
+&nbsp;
+<b class="nc">&nbsp;        switch (currentPhase) {</b>
+&nbsp;            case REINFORCEMENT:
+<b class="nc">&nbsp;                if (newPhase == TurnPhase.ATTACK) {</b>
+<b class="nc">&nbsp;                    game.setCurrentPhase(newPhase);</b>
+<b class="nc">&nbsp;                    return true;</b>
+&nbsp;                }
+&nbsp;                break;
+&nbsp;
+&nbsp;            case ATTACK:
+<b class="nc">&nbsp;                if (newPhase == TurnPhase.FORTIFY || newPhase == TurnPhase.END_TURN) {</b>
+<b class="nc">&nbsp;                    game.setCurrentPhase(newPhase);</b>
+<b class="nc">&nbsp;                    return true;</b>
+&nbsp;                }
+&nbsp;                break;
+&nbsp;
+&nbsp;            case FORTIFY:
+<b class="nc">&nbsp;                if (newPhase == TurnPhase.END_TURN) {</b>
+<b class="nc">&nbsp;                    game.setCurrentPhase(newPhase);</b>
+<b class="nc">&nbsp;                    return true;</b>
+&nbsp;                }
+&nbsp;                break;
+&nbsp;
+&nbsp;            case END_TURN:
+<b class="nc">&nbsp;                if (newPhase == TurnPhase.REINFORCEMENT) {</b>
+&nbsp;                    // Pasar al siguiente jugador
+<b class="nc">&nbsp;                    nextPlayer(game);</b>
+<b class="nc">&nbsp;                    game.setCurrentPhase(newPhase);</b>
+<b class="nc">&nbsp;                    return true;</b>
+&nbsp;                }
+&nbsp;                break;
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        return false;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // Iniciar juego
+&nbsp;    @Override
+&nbsp;    public boolean startGame(Game game) {
+<b class="nc">&nbsp;        if (game.getState() == GameState.WAITING_FOR_PLAYERS &amp;&amp; game.canStart()) {</b>
+<b class="nc">&nbsp;            return changeGameState(game, GameState.IN_PROGRESS);</b>
+&nbsp;        }
+<b class="nc">&nbsp;        return false;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // Pausar juego
+&nbsp;    @Override
+&nbsp;    public boolean pauseGame(Game game) {
+<b class="nc">&nbsp;        return changeGameState(game, GameState.PAUSED);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // Reanudar juego
+&nbsp;    @Override
+&nbsp;    public boolean resumeGame(Game game) {
+<b class="nc">&nbsp;        if (game.getState() == GameState.PAUSED) {</b>
+<b class="nc">&nbsp;            return changeGameState(game, GameState.IN_PROGRESS);</b>
+&nbsp;        }
+<b class="nc">&nbsp;        return false;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // Finalizar juego
+&nbsp;    @Override
+&nbsp;    public boolean finishGame(Game game) {
+<b class="nc">&nbsp;        return changeGameState(game, GameState.FINISHED);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // Siguiente turno
+&nbsp;    @Override
+&nbsp;    public void nextTurn(Game game) {
+<b class="nc">&nbsp;        nextPlayer(game);</b>
+<b class="nc">&nbsp;        game.setCurrentPhase(TurnPhase.REINFORCEMENT);</b>
+<b class="nc">&nbsp;        game.setCurrentTurn(game.getCurrentTurn() + 1);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    // Siguiente jugador
+&nbsp;    private void nextPlayer(Game game) {
+<b class="nc">&nbsp;        int nextIndex = (game.getCurrentPlayerIndex() + 1) % game.getPlayers().size();</b>
+<b class="nc">&nbsp;        game.setCurrentPlayerIndex(nextIndex);</b>
+&nbsp;
+&nbsp;        // Saltar jugadores eliminados
+<b class="nc">&nbsp;        Player nextPlayer = game.getPlayers().get(nextIndex);</b>
+<b class="nc">&nbsp;        if (nextPlayer.isEliminated()) {</b>
+<b class="nc">&nbsp;            nextPlayer(game); // Recursivo hasta encontrar jugador activo</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    // Verificar si se puede realizar una acción
+&nbsp;    @Override
+&nbsp;    public boolean canPerformAction(Game game, String action) {
+<b class="nc">&nbsp;        if (game.getState() != GameState.IN_PROGRESS) {</b>
+<b class="nc">&nbsp;            return false;</b>
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        TurnPhase currentPhase = game.getCurrentPhase();</b>
+&nbsp;
+<b class="nc">&nbsp;        switch (action.toLowerCase()) {</b>
+&nbsp;            case &quot;reinforce&quot;:
+<b class="nc">&nbsp;                return currentPhase == TurnPhase.REINFORCEMENT;</b>
+&nbsp;
+&nbsp;            case &quot;attack&quot;:
+<b class="nc">&nbsp;                return currentPhase == TurnPhase.ATTACK;</b>
+&nbsp;
+&nbsp;            case &quot;fortify&quot;:
+<b class="nc">&nbsp;                return currentPhase == TurnPhase.FORTIFY;</b>
+&nbsp;
+&nbsp;            case &quot;end_turn&quot;:
+<b class="nc">&nbsp;                return currentPhase == TurnPhase.END_TURN;</b>
+&nbsp;
+&nbsp;            case &quot;skip_attack&quot;:
+<b class="nc">&nbsp;                return currentPhase == TurnPhase.ATTACK;</b>
+&nbsp;
+&nbsp;            case &quot;skip_fortify&quot;:
+<b class="nc">&nbsp;                return currentPhase == TurnPhase.FORTIFY;</b>
+&nbsp;
+&nbsp;            default:
+<b class="nc">&nbsp;                return false;</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    // Obtener acciones disponibles
+&nbsp;    @Override
+&nbsp;    public String[] getAvailableActions(Game game) {
+<b class="nc">&nbsp;        if (game.getState() != GameState.IN_PROGRESS) {</b>
+<b class="nc">&nbsp;            return new String[0];</b>
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        switch (game.getCurrentPhase()) {</b>
+&nbsp;            case REINFORCEMENT:
+<b class="nc">&nbsp;                return new String[]{&quot;reinforce&quot;, &quot;next_phase&quot;};</b>
+&nbsp;
+&nbsp;            case ATTACK:
+<b class="nc">&nbsp;                return new String[]{&quot;attack&quot;, &quot;skip_attack&quot;, &quot;next_phase&quot;};</b>
+&nbsp;
+&nbsp;            case FORTIFY:
+<b class="nc">&nbsp;                return new String[]{&quot;fortify&quot;, &quot;skip_fortify&quot;, &quot;end_turn&quot;};</b>
+&nbsp;
+&nbsp;            case END_TURN:
+<b class="nc">&nbsp;                return new String[]{&quot;next_turn&quot;};</b>
+&nbsp;
+&nbsp;            default:
+<b class="nc">&nbsp;                return new String[0];</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;    @Override
+&nbsp;    public boolean isGameActive(Game game) {
+<b class="nc">&nbsp;        return game.getState() == GameState.IN_PROGRESS;</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Override
+&nbsp;    public boolean isPlayerTurn(Game game, Long playerId) {
+<b class="nc">&nbsp;        if (!isGameActive(game)) {</b>
+<b class="nc">&nbsp;            return false;</b>
+&nbsp;        }
+<b class="nc">&nbsp;        Player currentPlayer = game.getCurrentPlayer();</b>
+<b class="nc">&nbsp;        return currentPlayer != null &amp;&amp; currentPlayer.getId().equals(playerId);</b>
+&nbsp;    }
+&nbsp;
+&nbsp;    @Override
+&nbsp;    public String getCurrentPhaseDescription(Game game) {
+<b class="nc">&nbsp;        if (!isGameActive(game)) {</b>
+<b class="nc">&nbsp;            return &quot;Game is not active&quot;;</b>
+&nbsp;        }
+&nbsp;
+<b class="nc">&nbsp;        switch (game.getCurrentPhase()) {</b>
+&nbsp;            case REINFORCEMENT:
+<b class="nc">&nbsp;                return &quot;Place your reinforcement armies on your territories&quot;;</b>
+&nbsp;            case ATTACK:
+<b class="nc">&nbsp;                return &quot;Attack enemy territories or skip to fortification&quot;;</b>
+&nbsp;            case FORTIFY:
+<b class="nc">&nbsp;                return &quot;Move armies between your connected territories or end turn&quot;;</b>
+&nbsp;            case END_TURN:
+<b class="nc">&nbsp;                return &quot;Confirm to end your turn&quot;;</b>
+&nbsp;            default:
+<b class="nc">&nbsp;                return &quot;Unknown phase&quot;;</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    @Override
+&nbsp;    public boolean isValidPhaseTransition(TurnPhase currentPhase, TurnPhase targetPhase) {
+<b class="nc">&nbsp;        switch (currentPhase) {</b>
+&nbsp;            case REINFORCEMENT:
+<b class="nc">&nbsp;                return targetPhase == TurnPhase.ATTACK;</b>
+&nbsp;            case ATTACK:
+<b class="nc">&nbsp;                return targetPhase == TurnPhase.FORTIFY || targetPhase == TurnPhase.END_TURN;</b>
+&nbsp;            case FORTIFY:
+<b class="nc">&nbsp;                return targetPhase == TurnPhase.END_TURN;</b>
+&nbsp;            case END_TURN:
+<b class="nc">&nbsp;                return targetPhase == TurnPhase.REINFORCEMENT;</b>
+&nbsp;            default:
+<b class="nc">&nbsp;                return false;</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;
+&nbsp;    @Override
+&nbsp;    public boolean isValidStateTransition(GameState currentState, GameState targetState) {
+<b class="nc">&nbsp;        switch (currentState) {</b>
+&nbsp;            case WAITING_FOR_PLAYERS:
+<b class="nc">&nbsp;                return targetState == GameState.IN_PROGRESS;</b>
+&nbsp;            case IN_PROGRESS:
+<b class="nc">&nbsp;                return targetState == GameState.PAUSED || targetState == GameState.FINISHED;</b>
+&nbsp;            case PAUSED:
+<b class="nc">&nbsp;                return targetState == GameState.IN_PROGRESS;</b>
+&nbsp;            case FINISHED:
+<b class="nc">&nbsp;                return false; // No se puede cambiar desde FINISHED</b>
+&nbsp;            default:
+<b class="nc">&nbsp;                return false;</b>
+&nbsp;        }
+&nbsp;    }
+&nbsp;}
+</code>
+</pre>
+</div>
+
+<script type="text/javascript">
+(function() {
+    var msie = false, msie9 = false;
+    /*@cc_on
+      msie = true;
+      @if (@_jscript_version >= 9)
+        msie9 = true;
+      @end
+    @*/
+
+    if (!msie || msie && msie9) {
+      hljs.highlightAll()
+      hljs.initLineNumbersOnLoad();
+    }
+})();
+</script>
+
+<div class="footer">
+    
+    <div style="float:right;">generated on 2025-06-03 23:42</div>
+</div>
+</body>
+</html>
