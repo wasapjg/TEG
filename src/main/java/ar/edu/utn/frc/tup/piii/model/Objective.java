@@ -51,4 +51,20 @@ public class Objective {
         return null;
     }
 
+    public void setTargetColor(PlayerColor playerColor) {
+        if (playerColor != null) {
+            this.targetData = playerColor.name();
+        } else {
+            this.targetData = null;
+        }
+    }
+
+    public void setTargetContinents(List<String> continents) {
+        if (continents != null && !continents.isEmpty()) {
+            this.targetData = String.join(",", continents);
+        } else {
+            this.targetData = "";
+        }
+    }
+
 }

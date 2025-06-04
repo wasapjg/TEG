@@ -69,7 +69,7 @@ public class ObjectiveServiceImpl implements ObjectiveService {
 
     @Override
     public List<Objective> createObjectivesForGame(Game game) {
-        return findAll(); // Podrías filtrar por tipo o cantidad
+        return findAll();
     }
 
     @Override
@@ -154,6 +154,7 @@ public class ObjectiveServiceImpl implements ObjectiveService {
 
     @Override
     public String getObjectiveProgress(Long objectiveId, Game game, Player player) {
+        //todo: este metodo je
         return "Progress tracking not implemented yet";
     }
 }
