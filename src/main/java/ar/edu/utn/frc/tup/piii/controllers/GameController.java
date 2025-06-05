@@ -70,6 +70,24 @@ public class GameController {
         }
     }
 
+    //obtiene un DTO con playerId y un mapa de countryId a cantidadDeEjercitosAPoner a través del gamecode
+    @PostMapping("/{gameCode}/place-initial-armies")
+    public ResponseEntity<String> placeInitialArmies(
+            @PathVariable String gameCode,
+            @RequestBody InitialArmyPlacementDto dto) {
+        try {
+            gameService.prepareInitialPlacementPhase(gameCode, dto.getPlayerId(), dto.getArmiesByCountry());
+            return ResponseEntity.ok("Armies in place.");
+        } catch (GameNotFoundException | PlayerNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("InternalError");
+        }
+    }
+
+
     /**
      * Unirse a partida existente.
      * Recibe JoinGameDto con:

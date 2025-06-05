@@ -1,20 +1,16 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 import ar.edu.utn.frc.tup.piii.dtos.bot.AddBotsDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.*;
-import ar.edu.utn.frc.tup.piii.entities.BotProfileEntity;
-import ar.edu.utn.frc.tup.piii.entities.GameEntity;
-import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
-import ar.edu.utn.frc.tup.piii.entities.UserEntity;
+import ar.edu.utn.frc.tup.piii.entities.*;
 import ar.edu.utn.frc.tup.piii.exceptions.*;
 import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
+import ar.edu.utn.frc.tup.piii.mappers.TerritoryMapper;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.model.Player;
+import ar.edu.utn.frc.tup.piii.model.Territory;
 import ar.edu.utn.frc.tup.piii.model.User;
 import ar.edu.utn.frc.tup.piii.model.enums.*;
-import ar.edu.utn.frc.tup.piii.repository.BotProfileRepository;
-import ar.edu.utn.frc.tup.piii.repository.GameRepository;
-import ar.edu.utn.frc.tup.piii.repository.PlayerRepository;
-import ar.edu.utn.frc.tup.piii.repository.UserRepository;
+import ar.edu.utn.frc.tup.piii.repository.*;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.UserService;
 import ar.edu.utn.frc.tup.piii.utils.CodeGenerator;
@@ -24,8 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.Random;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class GameServiceImpl implements GameService {
@@ -49,6 +45,12 @@ public class GameServiceImpl implements GameService {
     private BotProfileRepository botProfileRepository;
 
     @Autowired
+    private CountryRepository countryRepository;
+
+    @Autowired
+    private GameTerritoryRepository gameTerritoryRepository;
+
+    @Autowired
     private CodeGenerator codeGenerator;
 
     @Autowired
@@ -57,6 +59,12 @@ public class GameServiceImpl implements GameService {
 
 
     private Random random = new Random();
+    @Autowired
+    private TerritoryMapper territoryMapper;
+    @Autowired
+    private ObjectiveRepository objectiveRepository;
+    @Autowired
+    private GameStateServiceImpl gameStateServiceImpl;
 
 
     @Override
@@ -239,7 +247,194 @@ public class GameServiceImpl implements GameService {
         GameEntity gameEntity = gameRepository.findByGameCode(gameCode)
                 .orElseThrow(() -> new GameNotFoundException("Game not found with code: " + gameCode));
 
+        //aca validamos el estado y si el juego puede empezar.
+        validatedGameCanStart(gameEntity);
 
+        //asigno el orden en el que van a jugar
+        assignSeatOrder(gameEntity);
+
+        //reparto paises
+        distributeCountries(gameEntity);
+
+        //reparto objetivos secreto no comun
+        assignObjective(gameEntity);
+
+        //setea ejcitos para colocar y pasa a fase INITIAL_PLACEMENT
+        prepareInitialPlacementPhase(gameEntity);
+
+        //primer turno
+        startFirstTurn(gameEntity);
+
+
+        //TODO: Inicializar territorios y cartas (implementar después)
+        // initializeTerritories(savedGame);
+        // initializeCards(savedGame);
+
+        //TODO: Activar StateMachine (implementar después)
+        // stateMachineService.startGame(savedGame.getId());
+        
+        //  Guardar cambios
+        GameEntity savedGame = gameRepository.save(gameEntity);
+        return gameMapper.toModel(savedGame);
+    }
+
+    private void startFirstTurn(GameEntity gameEntity) {
+        Game game = findByGameCode(gameEntity.getGameCode());
+        //TODO: cambiar el eventType a GAME_STARTED
+
+        // jugador con seatOrder = 0
+        List<PlayerEntity> players = gameEntity.getPlayers();
+        Optional<PlayerEntity> firstPlayerOpt = players.stream()
+                .filter(p -> p.getSeatOrder() == 0)
+                .findFirst();
+
+        if (firstPlayerOpt.isEmpty()) {
+            throw new IllegalStateException("No player with seatOrder = 0 found");
+        }
+
+        PlayerEntity firstPlayer = firstPlayerOpt.get();
+
+        int index = players.indexOf(firstPlayer);
+        gameEntity.setCurrentPlayerIndex(index);
+
+
+        // Paso 5: Enviar evento a StateMachine
+        // TODO: stateMachineService.sendEvent(gameEntity.getId(), EventType.GAME_STARTED)??;
+
+        gameRepository.save(gameEntity);
+    }
+
+
+    private void prepareInitialPlacementPhase(GameEntity gameEntity) {
+        Game game = gameMapper.toModel(gameEntity);
+        gameStateServiceImpl.changeTurnPhase(game, TurnPhase.REINFORCEMENT);
+        for (PlayerEntity player : gameEntity.getPlayers()) {
+            player.setArmiesToPlace(8);
+        }
+        // El frontend debera permitir que cada jugador, en orden de seatOrder, coloque primero 5 armies, luego 3.
+        //y despues mande todas juntas
+    }
+    private void assignObjective(GameEntity gameEntity) {
+        List<ObjectiveEntity> objectives = objectiveRepository.findByIsCommonFalse();
+        Collections.shuffle(objectives);
+
+        List<PlayerEntity> players = gameEntity.getPlayers();
+        List<ObjectiveEntity> objetivosUsados = new ArrayList<>();
+
+        for (PlayerEntity player : players) {
+            ObjectiveEntity objetivoAsignado = null;
+
+            for (ObjectiveEntity obj : objectives) {
+                if (objetivosUsados.contains(obj)) continue;
+
+                if (obj.getType() == ObjectiveType.DESTRUCTION && !isValidDestructionObjective(player, obj, players)) {
+                    fallbackToRightPlayerColor(player, obj, players);
+                    if (!isValidDestructionObjective(player, obj, players)) continue;
+                }
+
+                objetivoAsignado = obj;
+                break;
+            }
+
+            player.setObjective(objetivoAsignado);
+            objetivosUsados.add(objetivoAsignado);
+        }
+    }
+
+
+    private boolean isValidDestructionObjective(PlayerEntity player, ObjectiveEntity obj, List<PlayerEntity> players) {
+        String targetColorString = obj.getTargetData();
+        if (targetColorString == null || targetColorString.isEmpty()) return false;
+
+        PlayerColor targetColor;
+        try {
+            targetColor = PlayerColor.valueOf(targetColorString.toUpperCase());
+        } catch (Exception e) {
+            return false;
+        }
+
+        if (player.getColor() == targetColor) return false;
+
+        for (PlayerEntity otro : players) {
+            if (!otro.getId().equals(player.getId()) && otro.getColor() == targetColor) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    private void fallbackToRightPlayerColor(PlayerEntity player, ObjectiveEntity obj, List<PlayerEntity> players) {
+        int index = players.indexOf(player);
+        int indexDerecha = (index + 1) % players.size();
+        PlayerColor colorDerecha = players.get(indexDerecha).getColor();
+        obj.setTargetData(colorDerecha.name());
+    }
+
+    private void distributeCountries(GameEntity gameEntity) {
+        List<CountryEntity> countries = countryRepository.findAll();
+        Collections.shuffle(countries);
+
+        List<PlayerEntity> players = gameEntity.getPlayers();
+        int playerCount = players.size();
+
+        // Tirada de dados, esto es para que se cumple el reglamento, donde dice que dos jugadores random reciben las cartas sobrantes con una tiraada de dados
+        Map<PlayerEntity, Integer> tiradas = new HashMap<>();
+        Random random = new Random();
+
+        for (PlayerEntity player : players) {
+            tiradas.put(player, random.nextInt(6) + 1);
+        }
+
+        // Ordenar los jugadores por mayor numero que le toco en el "dado"
+        List<PlayerEntity> jugadoresOrdenados = new ArrayList<>(players);
+        jugadoresOrdenados.sort((a, b) -> tiradas.get(b) - tiradas.get(a));
+
+        int totalCountries = countries.size();
+        int base = totalCountries / playerCount;
+        int sobrantes = totalCountries % playerCount;
+
+        int countryIndex = 0;
+
+        for (PlayerEntity player : players) {
+            for (int i = 0; i < base; i++) {
+                assignTerritory(gameEntity, countries.get(countryIndex++), player);
+            }
+        }
+
+        // Reparto de los 2 paises que sobran a los jugadores con mayor suerte
+        for (int i = 0; i < sobrantes; i++) {
+            PlayerEntity ganadorDelDado = jugadoresOrdenados.get(i);
+            assignTerritory(gameEntity, countries.get(countryIndex++), ganadorDelDado);
+        }
+        //todo: Registrar evento COUNTRIES_DISTRIBUTED en la StateMachine
+
+    }
+
+    private void assignTerritory(GameEntity gameEntity, CountryEntity countryEntity, PlayerEntity player) {
+            GameTerritoryEntity territory = new GameTerritoryEntity();
+            territory.setGame(gameEntity);
+            territory.setCountry(countryEntity);
+            territory.setOwner(player);
+            territory.setArmies(1);
+
+            gameTerritoryRepository.save(territory);
+            player.getTerritories().add(territory);
+
+            //TODO: Registrar evento COUNTRIES_DISTRIBUTED en la StateMachine.
+
+    }
+
+    private void assignSeatOrder(GameEntity gameEntity) {
+        /// traigo los jugadores y los mezclo, va a ser aleatorio.
+        List<PlayerEntity> players = gameEntity.getPlayers();
+        Collections.shuffle(players);
+        for(int i = 0; i<players.size();i++){
+            players.get(i).setSeatOrder(i);
+        }
+        playerRepository.saveAll(players);
+    }
+
+    private static void validatedGameCanStart(GameEntity gameEntity) {
         if (gameEntity.getStatus() != GameState.WAITING_FOR_PLAYERS) {
             throw new InvalidGameStateException("Cannot start game. Current state: " + gameEntity.getStatus());
         }
@@ -250,24 +445,13 @@ public class GameServiceImpl implements GameService {
         }
 
         gameEntity.setStatus(GameState.IN_PROGRESS);
-        gameEntity.setStartedAt(java.time.LocalDateTime.now());
+        gameEntity.setStartedAt(LocalDateTime.now());
         gameEntity.setCurrentTurn(1);
         gameEntity.setCurrentPlayerIndex(0);
         gameEntity.getPlayers().forEach(player ->
                 player.setStatus(PlayerStatus.ACTIVE));
-
-        //  Guardar cambios
-        GameEntity savedGame = gameRepository.save(gameEntity);
-
-        //TODO: Inicializar territorios y cartas (implementar después)
-        // initializeTerritories(savedGame);
-        // initializeCards(savedGame);
-
-        //TODO: Activar StateMachine (implementar después)
-        // stateMachineService.startGame(savedGame.getId());
-
-        return gameMapper.toModel(savedGame);
     }
+
     private BotProfileEntity createDefaultBotProfile(BotLevel level, BotStrategy strategy) {
         BotProfileEntity botProfile = new BotProfileEntity();
         botProfile.setBotName("Bot " + level.name());
@@ -369,6 +553,72 @@ public class GameServiceImpl implements GameService {
         //va a tener el mismo que antes
         //problemas para mi yo del futuro
         return gameMapper.toModel(gameEntity);
+    }
+    public void prepareInitialPlacementPhase(String gameCode, Long playerId, Map<Long, Integer> armiesByCountry) {
+        Game game = findByGameCode(gameCode);
+        gameStateServiceImpl.changeTurnPhase(game, TurnPhase.REINFORCEMENT);
+        // el juego existe?
+        GameEntity gameEntity = gameRepository.findByGameCode(gameCode)
+                .orElseThrow(() -> new GameNotFoundException("Game not found with code: " + gameCode));
+
+        // el jugador existe?
+        PlayerEntity player = gameEntity.getPlayers().stream()
+                .filter(p -> p.getId().equals(playerId))
+                .findFirst()
+                .orElseThrow(() -> new PlayerNotFoundException("Player not found in game"));
+
+        gameStateServiceImpl.isPlayerTurn(game,playerId);
+
+        // los territorios le pertenecen?
+        for (Long countryId : armiesByCountry.keySet()) {
+            GameTerritoryEntity territory = gameTerritoryRepository.findByGameAndCountry(gameEntity, countryRepository.getReferenceById(countryId))
+                    .orElseThrow(() -> new IllegalArgumentException("Country not found in game: " + countryId));
+
+            if (!territory.getOwner().getId().equals(playerId)) {
+                throw new IllegalArgumentException("You don't own country with id: " + countryId);
+            }
+        }
+
+        // debe poner exactamente 5 o 3 ejércitos
+        int totalArmies = armiesByCountry.values().stream().mapToInt(Integer::intValue).sum();
+        if (totalArmies != 5 && totalArmies != 3) {
+            throw new IllegalArgumentException("You must place exactly 5 or 3 armies");
+        }
+
+        if (player.getArmiesToPlace() < totalArmies) {
+            throw new IllegalArgumentException("Trying to place more armies than available");
+        }
+
+        // actualizo los ejercitos en los territorios
+        for (Map.Entry<Long, Integer> entry : armiesByCountry.entrySet()) {
+            Long countryId = entry.getKey();
+            int armiesToAdd = entry.getValue();
+
+            GameTerritoryEntity territory = gameTerritoryRepository.findByGameAndCountry(gameEntity, countryRepository.getReferenceById(countryId))
+                    .orElseThrow(() -> new IllegalArgumentException("Country not found in game"));
+
+            territory.setArmies(territory.getArmies() + armiesToAdd);
+            gameTerritoryRepository.save(territory);
+        }
+
+        // actualizo ejrcitos restantes
+        player.setArmiesToPlace(player.getArmiesToPlace() - totalArmies);
+        playerRepository.save(player);
+
+        // verifico si todos terminaron
+        boolean allPlaced = gameEntity.getPlayers().stream()
+                .allMatch(p -> p.getArmiesToPlace() == 0);
+
+        if (allPlaced) {
+            //TODO: a que cambio? que estado?
+            //TODO: Una vez que todos los jugadores completaron ambas rondas, enviar
+            //evento INITIAL_ARMIES_PLACED a la StateMachine
+            //creo que aca deberia cambiar el eventType a REINFORCEMENTS_PLACED
+        } else {
+            gameStateServiceImpl.nextTurn(game);
+        }
+
+        gameRepository.save(gameEntity);
     }
 
 }

@@ -5,6 +5,7 @@ import ar.edu.utn.frc.tup.piii.exceptions.*;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import jakarta.transaction.Transactional;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -109,4 +110,6 @@ public interface GameService {
     Game kickPlayer(KickPlayerDto dto)
             throws GameNotFoundException, PlayerNotFoundException, InvalidGameStateException, ForbiddenException;
 
+    void prepareInitialPlacementPhase(String gameCode, Long playerId, Map<Long, Integer> armiesByCountry);
 }
+
