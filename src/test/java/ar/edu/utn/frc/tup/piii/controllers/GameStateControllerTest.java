@@ -121,7 +121,7 @@ class GameStateControllerTest {
     void pauseGame_WhenGameCanBePaused_ShouldReturnSuccessMessage() throws Exception {
         // Given
         Long gameId = 1L;
-        game.setState(GameState.IN_PROGRESS);
+        game.setState(GameState.NORMAL_PLAY);
         when(gameService.findById(gameId)).thenReturn(game);
         when(stateService.pauseGame(game)).thenReturn(true);
         when(gameService.save(game)).thenReturn(game);
@@ -159,7 +159,7 @@ class GameStateControllerTest {
     void finishGame_WhenGameCanBeFinished_ShouldReturnSuccessMessage() throws Exception {
         // Given
         Long gameId = 1L;
-        game.setState(GameState.IN_PROGRESS);
+        game.setState(GameState.NORMAL_PLAY);
         when(gameService.findById(gameId)).thenReturn(game);
         when(stateService.finishGame(game)).thenReturn(true);
         when(gameService.save(game)).thenReturn(game);
@@ -179,7 +179,7 @@ class GameStateControllerTest {
         // Given
         Long gameId = 1L;
         String action = "next_phase";
-        game.setState(GameState.IN_PROGRESS);
+        game.setState(GameState.NORMAL_PLAY);
         game.setCurrentPhase(TurnPhase.REINFORCEMENT);
 
         when(gameService.findById(gameId)).thenReturn(game);
@@ -240,7 +240,7 @@ class GameStateControllerTest {
     void getCurrentState_ShouldReturnGameStateResponse() throws Exception {
         // Given
         Long gameId = 1L;
-        game.setState(GameState.IN_PROGRESS);
+        game.setState(GameState.NORMAL_PLAY);
         game.setCurrentPhase(TurnPhase.ATTACK);
         game.setCurrentTurn(5);
 

@@ -285,7 +285,7 @@ public class GameControllerTest {
                 .id(sampleDto.getId())
                 .gameCode(sampleDto.getGameCode())
                 .createdByUsername(sampleDto.getCreatedByUsername())
-                .state(GameState.IN_PROGRESS)
+                .state(GameState.NORMAL_PLAY)
                 .currentPhase(sampleDto.getCurrentPhase())
                 .currentTurn(1)
                 .currentPlayerIndex(0)
@@ -317,7 +317,7 @@ public class GameControllerTest {
                 .andExpect(jsonPath("$.gameCode").value("TEST123"))
                 .andExpect(jsonPath("$.currentTurn").value(1))
                 .andExpect(jsonPath("$.currentPlayerIndex").value(0))
-                .andExpect(jsonPath("$.state").value("IN_PROGRESS"));
+                .andExpect(jsonPath("$.state").value("NORMAL_PLAY"));
     }
 
     @Test

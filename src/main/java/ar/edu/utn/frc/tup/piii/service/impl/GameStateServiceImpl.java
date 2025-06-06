@@ -85,7 +85,8 @@ public class GameStateServiceImpl implements GameStateService {
 
         switch (currentPhase) {
             case REINFORCEMENT:
-                if (newPhase == TurnPhase.ATTACK) {
+                if (newPhase == TurnPhase.ATTACK || (game.getState().equals(GameState.REINFORCEMENT_5) && newPhase == TurnPhase.END_TURN)
+                        || (game.getState().equals(GameState.REINFORCEMENT_3) && newPhase == TurnPhase.END_TURN)) {
                     game.setCurrentPhase(newPhase);
                     return true;
                 }

@@ -110,7 +110,7 @@ class GameMapperTest {
         gameEntity.setId(1L);
         gameEntity.setGameCode("TEST123");
         gameEntity.setCreatedBy(userEntity);
-        gameEntity.setStatus(GameState.IN_PROGRESS);
+        gameEntity.setStatus(GameState.NORMAL_PLAY);
         gameEntity.setCurrentPhase(TurnPhase.ATTACK);
         gameEntity.setCurrentTurn(5);
         gameEntity.setCurrentPlayerIndex(0);
@@ -133,7 +133,7 @@ class GameMapperTest {
                 .id(1L)
                 .gameCode("TEST123")
                 .createdByUsername("testuser")
-                .state(GameState.IN_PROGRESS)
+                .state(GameState.NORMAL_PLAY)
                 .currentPhase(TurnPhase.ATTACK)
                 .currentTurn(5)
                 .currentPlayerIndex(0)
@@ -168,7 +168,7 @@ class GameMapperTest {
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getGameCode()).isEqualTo("TEST123");
         assertThat(result.getCreatedByUsername()).isEqualTo("testuser");
-        assertThat(result.getState()).isEqualTo(GameState.IN_PROGRESS);
+        assertThat(result.getState()).isEqualTo(GameState.NORMAL_PLAY);
         assertThat(result.getCurrentPhase()).isEqualTo(TurnPhase.ATTACK);
         assertThat(result.getCurrentTurn()).isEqualTo(5);
         assertThat(result.getCurrentPlayerIndex()).isEqualTo(0);
@@ -330,7 +330,7 @@ class GameMapperTest {
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(1L);
         assertThat(result.getGameCode()).isEqualTo("TEST123");
-        assertThat(result.getStatus()).isEqualTo(GameState.IN_PROGRESS);
+        assertThat(result.getStatus()).isEqualTo(GameState.NORMAL_PLAY);
         assertThat(result.getCurrentPhase()).isEqualTo(TurnPhase.ATTACK);
         assertThat(result.getCurrentTurn()).isEqualTo(5);
         assertThat(result.getCurrentPlayerIndex()).isEqualTo(0);
