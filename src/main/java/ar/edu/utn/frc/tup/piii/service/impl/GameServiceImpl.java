@@ -501,7 +501,7 @@ public class GameServiceImpl implements GameService {
             throw new InvalidGameStateException("Minimum 2 players required to start. Current: " + playerCount);
         }
 
-        gameEntity.setStatus(GameState.IN_PROGRESS);
+        gameEntity.setStatus(GameState.REINFORCEMENT_5);
         gameEntity.setStartedAt(LocalDateTime.now());
         gameEntity.setCurrentTurn(1);
         gameEntity.setCurrentPlayerIndex(0);

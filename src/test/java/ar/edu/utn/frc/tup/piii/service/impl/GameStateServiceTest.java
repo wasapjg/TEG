@@ -28,13 +28,13 @@ public class GameStateServiceTest {
         boolean result = stateService.startGame(game);
 
         assertThat(result).isTrue();
-        assertThat(game.getState()).isEqualTo(GameState.IN_PROGRESS);
+        assertThat(game.getState()).isEqualTo(GameState.NORMAL_PLAY);
         assertThat(game.getCurrentPhase()).isEqualTo(TurnPhase.REINFORCEMENT);
     }
 
     @Test
     void changeTurnPhase_ShouldAdvanceFromReinforcementToAttack() {
-        game.setState(GameState.IN_PROGRESS);
+        game.setState(GameState.NORMAL_PLAY);
         game.setCurrentPhase(TurnPhase.REINFORCEMENT);
 
         boolean result = stateService.changeTurnPhase(game, TurnPhase.ATTACK);
@@ -45,7 +45,7 @@ public class GameStateServiceTest {
 
     @Test
     void canPerformAction_ShouldReturnTrueForValidAction() {
-        game.setState(GameState.IN_PROGRESS);
+        game.setState(GameState.NORMAL_PLAY);
         game.setCurrentPhase(TurnPhase.ATTACK);
 
         boolean result = stateService.canPerformAction(game, "attack");
