@@ -7,24 +7,51 @@ import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameStateService;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 public class GameStateServiceImpl implements GameStateService {
 
-    // Cambiar estado del juego
+    List<GameState> noGameList = List.of(GameState.WAITING_FOR_PLAYERS, GameState.PAUSED, GameState.FINISHED);
+            // Cambiar estado del juego
     @Override
     public boolean changeGameState(Game game, GameState newState) {
         GameState currentState = game.getState();
 
         switch (currentState) {
             case WAITING_FOR_PLAYERS:
-                if (newState == GameState.IN_PROGRESS && game.canStart()) {
+                if (newState == GameState.REINFORCEMENT_5 && game.canStart()) {
                     game.setState(newState);
                     game.setCurrentPhase(TurnPhase.REINFORCEMENT);
                     return true;
                 }
                 break;
 
-            case IN_PROGRESS:
+            case REINFORCEMENT_5: // 5 tropas, 3 tropas, atacar // primera ronda de tod menos reinforcment despues de la colacion de
+                if(newState == GameState.REINFORCEMENT_3) {
+                    game.setState(newState);
+                    game.setCurrentPhase(TurnPhase.REINFORCEMENT);
+                    return true;
+                }
+
+            case REINFORCEMENT_3: // 5 tropas, 3 tropas, atacar // primera ronda de tod menos reinforcment despues de la colacion de
+                if(newState == GameState.HOSTILITY_ONLY) {
+                    game.setState(newState);
+                    game.setCurrentPhase(TurnPhase.REINFORCEMENT);
+                    return true;
+                }
+
+            case HOSTILITY_ONLY: // 5 tropas, 3 tropas, atacar // primera ronda de tod menos reinforcment despues de la colacion de
+                if(newState == GameState.HOSTILITY_ONLY) {
+                    game.setState(newState);
+                    game.setCurrentPhase(TurnPhase.ATTACK);
+                    return true;
+                }
+
+                // 4 tipos de rondas // reinforcment 5 // reinforcment 3 // sin reinforcment // ostilidades
+
+            case NORMAL_PLAY: // 5 tropas, 3 tropas, atacar // primera ronda de tod menos reinforcment despues de la colacion de
                 if (newState == GameState.PAUSED ||
                         newState == GameState.FINISHED) {
                     game.setState(newState);
@@ -33,7 +60,7 @@ public class GameStateServiceImpl implements GameStateService {
                 break;
 
             case PAUSED:
-                if (newState == GameState.IN_PROGRESS) {
+                if (newState == GameState.NORMAL_PLAY) {
                     game.setState(newState);
                     return true;
                 }
@@ -50,7 +77,7 @@ public class GameStateServiceImpl implements GameStateService {
     // Cambiar fase del turno
     @Override
     public boolean changeTurnPhase(Game game, TurnPhase newPhase) {
-        if (game.getState() != GameState.IN_PROGRESS) {
+        if (noGameList.contains(game.getState())) {
             return false;
         }
 
@@ -65,13 +92,21 @@ public class GameStateServiceImpl implements GameStateService {
                 break;
 
             case ATTACK:
-                if (newPhase == TurnPhase.FORTIFY || newPhase == TurnPhase.END_TURN) {
+                if (newPhase == TurnPhase.FORTIFY ) {
                     game.setCurrentPhase(newPhase);
                     return true;
                 }
                 break;
 
             case FORTIFY:
+                if (newPhase == TurnPhase.END_TURN) {
+                    game.setCurrentPhase(newPhase);
+                    return true;
+                }
+                break;
+
+                // pedir carta
+            case CLAIM_CARD:
                 if (newPhase == TurnPhase.END_TURN) {
                     game.setCurrentPhase(newPhase);
                     return true;
@@ -95,7 +130,7 @@ public class GameStateServiceImpl implements GameStateService {
     @Override
     public boolean startGame(Game game) {
         if (game.getState() == GameState.WAITING_FOR_PLAYERS && game.canStart()) {
-            return changeGameState(game, GameState.IN_PROGRESS);
+            return changeGameState(game, GameState.REINFORCEMENT_5);
         }
         return false;
     }
@@ -110,7 +145,7 @@ public class GameStateServiceImpl implements GameStateService {
     @Override
     public boolean resumeGame(Game game) {
         if (game.getState() == GameState.PAUSED) {
-            return changeGameState(game, GameState.IN_PROGRESS);
+            return changeGameState(game, GameState.NORMAL_PLAY);
         }
         return false;
     }
@@ -144,7 +179,7 @@ public class GameStateServiceImpl implements GameStateService {
     // Verificar si se puede realizar una acción
     @Override
     public boolean canPerformAction(Game game, String action) {
-        if (game.getState() != GameState.IN_PROGRESS) {
+        if (noGameList.contains(game.getState())) {
             return false;
         }
 
@@ -177,7 +212,7 @@ public class GameStateServiceImpl implements GameStateService {
     // Obtener acciones disponibles
     @Override
     public String[] getAvailableActions(Game game) {
-        if (game.getState() != GameState.IN_PROGRESS) {
+        if (noGameList.contains(game.getState())) {
             return new String[0];
         }
 
@@ -200,7 +235,7 @@ public class GameStateServiceImpl implements GameStateService {
     }
     @Override
     public boolean isGameActive(Game game) {
-        return game.getState() == GameState.IN_PROGRESS;
+        return !noGameList.contains(game.getState());
     }
 
     @Override
@@ -252,11 +287,15 @@ public class GameStateServiceImpl implements GameStateService {
     public boolean isValidStateTransition(GameState currentState, GameState targetState) {
         switch (currentState) {
             case WAITING_FOR_PLAYERS:
-                return targetState == GameState.IN_PROGRESS;
-            case IN_PROGRESS:
+                return targetState == GameState.REINFORCEMENT_5;
+            case REINFORCEMENT_5:
+                return  targetState == GameState.REINFORCEMENT_3 ;
+            case REINFORCEMENT_3:
+                return targetState == GameState.HOSTILITY_ONLY;
+            case HOSTILITY_ONLY:
+                return targetState == GameState.NORMAL_PLAY;
+            case NORMAL_PLAY:
                 return targetState == GameState.PAUSED || targetState == GameState.FINISHED;
-            case PAUSED:
-                return targetState == GameState.IN_PROGRESS;
             case FINISHED:
                 return false; // No se puede cambiar desde FINISHED
             default:
