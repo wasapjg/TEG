@@ -121,6 +121,7 @@ public class GameServiceImpl implements GameService {
         gameEntity.setTurnTimeLimit(120);
         gameEntity.setChatEnabled(true);
         gameEntity.setPactsAllowed(false);
+        gameEntity.setCurrentPhase(TurnPhase.REINFORCEMENT);
 
         GameEntity savedGame = gameRepository.save(gameEntity);
 
