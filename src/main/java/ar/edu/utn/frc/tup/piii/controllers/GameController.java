@@ -179,6 +179,7 @@ public class GameController {
      * Recibe: { "gameCode": "...", "playerId": 2 }
      * Retorna: 200 + GameResponseDto actualizado (sin el jugador expulsado).
      */
+
     @PostMapping("/kick-player")
     public ResponseEntity<GameResponseDto> kickPlayer(@RequestBody KickPlayerDto dto) {
         if (dto.getGameCode() == null || dto.getPlayerId() == null) {
@@ -192,23 +193,27 @@ public class GameController {
 
         } catch (GameNotFoundException | PlayerNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-
         } catch (InvalidGameStateException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(GameResponseDto.builder()
-                            .gameCode(dto.getGameCode())
-                            .winnerName(e.getMessage())
-                            .build());
-
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         } catch (ForbiddenException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(GameResponseDto.builder()
-                            .gameCode(dto.getGameCode())
-                            .winnerName(e.getMessage())
-                            .build());
         }
+    }
+
+
+    /**
+     * Permite a un jugador salir voluntariamente del jeugo mientras esta en el lobby
+     * Solo es valido cuando el jeugo esta en estado Waiting_for_players
+
+     * recibe: { "gameCode": "...", "playerId": 2 }
+     * Devuelve: 200 +  GameResponseDto Actualizado (Sin el jugador que se fue).
+     */
+    @PostMapping("/leave")
+    public ResponseEntity<GameResponseDto> leaveGame(@RequestBody LeaveGameDto dto) {
+        if (dto.getGameCode() == null || dto.getUserId() == null) {
+            throw new BadRequestException("Debe enviar gameCode y userId en el LeaveGameDto");
+        }
+        Game game = gameService.leaveGame(dto);
+        return ResponseEntity.ok(gameMapper.toResponseDto(game));
     }
 }

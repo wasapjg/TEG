@@ -111,5 +111,22 @@ public interface GameService {
             throws GameNotFoundException, PlayerNotFoundException, InvalidGameStateException, ForbiddenException;
 
     void prepareInitialPlacementPhase(String gameCode, Long playerId, Map<Long, Integer> armiesByCountry);
+
+    /**
+     * Allows a player to voluntarily leave the game while it's in the lobby state.
+     *
+     * <p>
+     * This method is only valid if the game is in the {@code WAITING_FOR_PLAYERS} state.
+     * The player will be removed from the list of active players.
+     * </p>
+     *
+     * @param dto DTO containing the {@code gameCode} and the {@code playerId} of the player who wants to leave.
+     * @return An updated {@link GameResponseDto} without the player who left.
+     * @throws GameNotFoundException if the game does not exist.
+     * @throws PlayerNotFoundException if the player is not part of the game.
+     * @throws InvalidGameStateException if the game has already started.
+     */
+    Game leaveGame(LeaveGameDto dto);
+
 }
 
