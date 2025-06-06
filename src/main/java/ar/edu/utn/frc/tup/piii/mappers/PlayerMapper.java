@@ -1,11 +1,16 @@
 package ar.edu.utn.frc.tup.piii.mappers;
 import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
+import ar.edu.utn.frc.tup.piii.dtos.player.PlayerRequestDto;
 import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
 import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
 import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.model.Territory;
+import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
+import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 @Component
@@ -102,6 +107,20 @@ public class PlayerMapper {
         }
 
         return builder.build();
+    }
+    public PlayerEntity fromRequestDto(PlayerRequestDto dto) {
+        if (dto == null) return null;
+
+        PlayerEntity entity = new PlayerEntity();
+
+        entity.setStatus(PlayerStatus.valueOf(dto.getStatus().toUpperCase()));
+        entity.setColor(PlayerColor.valueOf(dto.getColor().toUpperCase()));
+
+        entity.setSeatOrder(dto.getSeatOrder());
+        entity.setJoinedAt(LocalDateTime.now());
+        entity.setArmiesToPlace(0);
+
+        return entity;
     }
 
 }

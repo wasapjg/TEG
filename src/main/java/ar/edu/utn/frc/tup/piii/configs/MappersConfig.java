@@ -27,7 +27,7 @@ public class MappersConfig {
      * @return the ModelMapper to use in updates.
      */
     @Bean("mergerMapper")
-    public ModelMapper mergerMapper() {
+    public ModelMapper mergerMapper() { //este es para update e ignora los campos null
         ModelMapper mapper =  new ModelMapper();
         mapper.getConfiguration()
                 .setPropertyCondition(Conditions.isNotNull());
@@ -39,9 +39,9 @@ public class MappersConfig {
      * @return the ObjectMapper with JavaTimeModule included.
      */
     @Bean
-    public ObjectMapper objectMapper() {
+    public ObjectMapper objectMapper() { //convierte a json y viceversa
         ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
+        objectMapper.registerModule(new JavaTimeModule()); // para los localdate sin errores
         return objectMapper;
     }
 

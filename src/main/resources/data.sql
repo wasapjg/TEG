@@ -281,3 +281,4 @@ VALUES (5, 'usuario5', 'usuario5@example.com', 'hash5', TRUE, CURRENT_TIMESTAMP)
 
 INSERT INTO USERS (ID, USERNAME, EMAIL, PASSWORD_HASH, IS_ACTIVE, CREATED_AT)
 VALUES (6, 'usuario6', 'usuario6@example.com', 'hash6', TRUE, CURRENT_TIMESTAMP);
+
