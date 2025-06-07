@@ -60,10 +60,13 @@ public class GameInitializationService {
         // 3. Asignar objetivos secretos
         assignObjectives(game);
 
-        // 4. Preparar fase inicial de colocación
+        // 4. Asegurar que todos los jugadores estén activos
+        setAllPlayersActive(gameEntity);
+
+        // 5. Preparar fase inicial de colocación
         prepareInitialPlacement(game);
 
-        // 5. Configurar estado del juego
+        // 6. Configurar estado del juego
         setupGameState(gameEntity, game);
     }
 
@@ -132,12 +135,28 @@ public class GameInitializationService {
         }
 
         long activePlayerCount = game.getPlayers().stream()
-                .filter(p -> p.getStatus() != PlayerStatus.ELIMINATED)
+                .filter(p -> p.getStatus() != PlayerStatus.ACTIVE)
                 .count();
 
         if (activePlayerCount < 2) {
             throw new InvalidGameStateException("Minimum 2 players required to start. Current: " + activePlayerCount);
         }
+    }
+
+    /**
+     * Asegurar que todos los jugadores estén ACTIVE
+     */
+    private void setAllPlayersActive(GameEntity gameEntity) {
+
+        List<PlayerEntity> allPlayers = gameEntity.getPlayers();
+
+        for (PlayerEntity player : allPlayers) {
+            if (player.getStatus() != PlayerStatus.ELIMINATED) {
+                player.setStatus(PlayerStatus.ACTIVE);
+            }
+        }
+
+        playerRepository.saveAll(allPlayers);
     }
 
     /**
@@ -247,12 +266,11 @@ public class GameInitializationService {
      */
     private void prepareInitialPlacement(Game game) {
         List<Player> activePlayers = game.getPlayers().stream()
-                .filter(p -> p.getStatus() == PlayerStatus.ELIMINATED)
+                .filter(p -> p.getStatus() != PlayerStatus.ELIMINATED)
                 .toList();
 
-        // Cada jugador debe colocar 8 ejércitos en total (5 + 3)
         for (Player player : activePlayers) {
-            playerService.addArmiesToPlace(player.getId(), 5); // Empezamos con la primera ronda de 5
+            playerService.addArmiesToPlace(player.getId(), 5);
         }
     }
 

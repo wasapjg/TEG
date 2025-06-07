@@ -39,7 +39,7 @@ public interface PlayerRepository extends JpaRepository<PlayerEntity, Long> {
     @Query("UPDATE PlayerEntity p SET p.armiesToPlace = p.armiesToPlace + :armies WHERE p.id = :playerId")
     void addArmiesToPlace(@Param("playerId") Long playerId, @Param("armies") int armies);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE PlayerEntity p SET p.armiesToPlace = GREATEST(0, p.armiesToPlace - :armies) WHERE p.id = :playerId")
     void removeArmiesToPlace(@Param("playerId") Long playerId, @Param("armies") int armies);
 }

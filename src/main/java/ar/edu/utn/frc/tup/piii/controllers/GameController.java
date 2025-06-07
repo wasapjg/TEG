@@ -7,6 +7,7 @@ import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.service.impl.GameServiceImpl;
 import ar.edu.utn.frc.tup.piii.service.impl.InitialPlacementService;
+import ar.edu.utn.frc.tup.piii.service.interfaces.CombatService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,9 @@ public class GameController {
 
     @Autowired
     private GameMapper gameMapper;
+
+    @Autowired
+    private CombatService combatService;
 
     /**
      * Crea un nuevo lobby con configuraciones por defecto.
@@ -194,5 +198,10 @@ public class GameController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal Error: " + e.getMessage());
         }
+    }
+
+    @PostMapping("/test-combat")
+    public ResponseEntity<CombatResultDto> testCombat(@RequestBody AttackDto attackDto) {
+        return ResponseEntity.ok(combatService.performCombat("TU_GAME_CODE", attackDto));
     }
 }

@@ -213,6 +213,7 @@ public class GameTerritoryServiceImpl implements GameTerritoryService {
     /**
      * Transfiere la propiedad de un territorio de un jugador a otro.
      */
+    @Override
     @Transactional
     public void transferTerritoryOwnership(Long gameId, Long countryId, Long newOwnerId, int armies) {
         GameEntity game = gameRepository.findById(gameId)
@@ -235,6 +236,7 @@ public class GameTerritoryServiceImpl implements GameTerritoryService {
     /**
      * Verifica si dos territorios son vecinos.
      */
+    @Override
     public boolean areTerritoriesNeighbors(Long countryId1, Long countryId2) {
         CountryEntity country1 = countryRepository.findById(countryId1)
                 .orElseThrow(() -> new IllegalArgumentException("Country not found with id: " + countryId1));
@@ -246,6 +248,7 @@ public class GameTerritoryServiceImpl implements GameTerritoryService {
     /**
      * Obtiene los vecinos de un territorio.
      */
+    @Override
     public List<Territory> getNeighborTerritories(Long gameId, Long countryId) {
         GameEntity game = gameRepository.findById(gameId)
                 .orElseThrow(() -> new GameNotFoundException("Game not found with id: " + gameId));

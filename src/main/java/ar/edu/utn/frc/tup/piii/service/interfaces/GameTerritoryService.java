@@ -21,5 +21,20 @@ public interface GameTerritoryService {
     void assignTerritoryToPlayer(Long id, Long id1, Long id2, int i);
 
     List<Territory> getTerritoriesByOwner(Long id, Long playerId);
+
+    /**
+     * Transfiere la propiedad de un territorio de un jugador a otro.
+     */
+    void transferTerritoryOwnership(Long gameId, Long countryId, Long newOwnerId, int armies);
+
+    /**
+     * Verifica si dos territorios son vecinos.
+     */
+    boolean areTerritoriesNeighbors(Long countryId1, Long countryId2);
+
+    /**
+     * Obtiene los vecinos de un territorio.
+     */
+    List<Territory> getNeighborTerritories(Long gameId, Long countryId);
 }
 

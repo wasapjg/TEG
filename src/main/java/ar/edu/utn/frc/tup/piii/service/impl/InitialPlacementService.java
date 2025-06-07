@@ -40,24 +40,18 @@ public class InitialPlacementService {
      */
     @Transactional
     public void placeInitialArmies(String gameCode, Long playerId, Map<Long, Integer> armiesByCountry) {
-        // Obtener juego a través del servicio
         Game game = gameService.findByGameCode(gameCode);
 
-        // Obtener jugador a través del servicio
         Player player = playerService.findById(playerId)
                 .orElseThrow(() -> new PlayerNotFoundException("Player not found with id: " + playerId));
 
-        // Validar la colocación
         validatePlacement(game, player, armiesByCountry);
 
-        // Colocar ejércitos en territorios
         placeArmiesOnTerritories(game.getId(), armiesByCountry);
 
-        // Actualizar ejércitos del jugador
         int totalArmies = armiesByCountry.values().stream().mapToInt(Integer::intValue).sum();
         playerService.removeArmiesToPlace(playerId, totalArmies);
 
-        // Verificar si debe avanzar el turno
         checkAndAdvanceTurn(game);
     }
 
@@ -65,17 +59,14 @@ public class InitialPlacementService {
      * Valida que la colocación sea correcta.
      */
     private void validatePlacement(Game game, Player player, Map<Long, Integer> armiesByCountry) {
-        // Verificar fase del juego
         if (!isInitialPhase(game.getState())) {
             throw new InvalidGameStateException("Game is not in initial placement phase");
         }
 
-        // Verificar turno del jugador
         if (!gameStateService.isPlayerTurn(game, player.getId())) {
             throw new InvalidGameStateException("It's not player's turn");
         }
 
-        // Verificar cantidad de ejércitos
         int totalArmies = armiesByCountry.values().stream().mapToInt(Integer::intValue).sum();
         int expectedArmies = getExpectedArmiesForPhase(game.getState());
         int playerArmies = playerService.getArmiesToPlace(player.getId());
@@ -90,7 +81,6 @@ public class InitialPlacementService {
                     String.format("Player only has %d armies to place", playerArmies));
         }
 
-        // Verificar que los territorios pertenezcan al jugador
         validateTerritoryOwnership(game.getId(), player.getId(), armiesByCountry.keySet());
     }
 
@@ -145,15 +135,11 @@ public class InitialPlacementService {
      * Verifica si debe avanzar el turno o la fase.
      */
     private void checkAndAdvanceTurn(Game game) {
-        // Verificar si todos completaron la ronda actual
         if (allPlayersCompletedRound(game)) {
             advancePhase(game);
         } else {
-            // Avanzar al siguiente jugador
-            gameStateService.nextTurn(game);
+            advanceToNextPlayer(game);
         }
-
-        // Guardar cambios
         gameService.save(game);
     }
 
@@ -164,6 +150,36 @@ public class InitialPlacementService {
         return game.getPlayers().stream()
                 .filter(p -> p.getStatus() == PlayerStatus.ACTIVE)
                 .allMatch(p -> playerService.getArmiesToPlace(p.getId()) == 0);
+    }
+
+    /**
+     * Avanza al siguiente jugador en el orden de turnos.
+     */
+    private void advanceToNextPlayer(Game game) {
+        List<Player> activePlayers = game.getPlayers().stream()
+                .filter(p -> p.getStatus() == PlayerStatus.ACTIVE)
+                .sorted((p1, p2) -> Integer.compare(p1.getSeatOrder(), p2.getSeatOrder()))
+                .toList();
+
+        if (activePlayers.isEmpty()) {
+            return;
+        }
+
+        int currentIndex = game.getCurrentPlayerIndex();
+        int nextPlayerIndex = -1;
+
+        for (Player player : activePlayers) {
+            if (player.getSeatOrder() > currentIndex) {
+                nextPlayerIndex = player.getSeatOrder();
+                break;
+            }
+        }
+
+        if (nextPlayerIndex == -1) {
+            nextPlayerIndex = activePlayers.get(0).getSeatOrder();
+        }
+
+        game.setCurrentPlayerIndex(nextPlayerIndex);
     }
 
     /**
@@ -276,7 +292,6 @@ public class InitialPlacementService {
         );
     }
 
-
     @Data
     @AllArgsConstructor
     public static class InitialPlacementStatus {
@@ -284,8 +299,8 @@ public class InitialPlacementService {
         private final String message;
         private final Long currentPlayerId;
         private final int expectedArmies;
-
     }
+
     @Data
     @AllArgsConstructor
     public static class PlayerInitialStatus {
