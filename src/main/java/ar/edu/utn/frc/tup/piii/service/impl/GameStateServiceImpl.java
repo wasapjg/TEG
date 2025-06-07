@@ -14,7 +14,7 @@ import java.util.List;
 public class GameStateServiceImpl implements GameStateService {
 
     List<GameState> noGameList = List.of(GameState.WAITING_FOR_PLAYERS, GameState.PAUSED, GameState.FINISHED);
-            // Cambiar estado del juego
+    // Cambiar estado del juego
     @Override
     public boolean changeGameState(Game game, GameState newState) {
         GameState currentState = game.getState();
@@ -106,7 +106,7 @@ public class GameStateServiceImpl implements GameStateService {
                 }
                 break;
 
-                // pedir carta
+            // pedir carta
             case CLAIM_CARD:
                 if (newPhase == TurnPhase.END_TURN) {
                     game.setCurrentPhase(newPhase);

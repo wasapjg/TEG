@@ -21,4 +21,6 @@ public interface UserService {
     void save(User user);
 
     User getUserByEmailAndPasswordHash(String email, String password);
+
+    User updateUser(Long id, UserUpdateDto userUpdateDto);
 }

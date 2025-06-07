@@ -5,6 +5,8 @@ import ar.edu.utn.frc.tup.piii.dtos.game.*;
 import ar.edu.utn.frc.tup.piii.exceptions.*;
 import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
 import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.service.impl.GameServiceImpl;
+import ar.edu.utn.frc.tup.piii.service.impl.InitialPlacementService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,44 +22,34 @@ import java.util.Objects;
 public class GameController {
 
     @Autowired
-    private GameService gameService;
+    private GameServiceImpl gameService;
+
+    @Autowired
+    private InitialPlacementService initialPlacementService;
 
     @Autowired
     private GameMapper gameMapper;
 
     /**
+     * Crea un nuevo lobby con configuraciones por defecto.
      * POST /api/games/create-lobby
-     * Recibe: { "hostUserId": Long }
-     * Crea en BD un GameEntity con:
-     *    - gameCode único
-     *    - hostUserId
-     *    - maxPlayers  = 6   (valor por defecto)
-     *    - turnTimeLimit = 120 (valor por defecto, en segundos)
-     *    - chatEnabled = true
-     *    - pactsAllowed = false
-     *    - estado = WAITING_FOR_PLAYERS
-     * Crea un PlayerEntity para el host, con color RED (por ej.), status WAITING.
-     * Retorna: GameResponseDto completo (con lista de jugadores, configuraciones, gameCode, etc.)
      */
     @PostMapping("/create-lobby")
-    public ResponseEntity<GameResponseDto> createLobby(@RequestBody CreateCodeDto dto) {
+    public ResponseEntity<GameResponseDto> createLobby(@Valid @RequestBody CreateCodeDto dto) {
         if (dto.getHostUserId() == null) {
             throw new IllegalArgumentException("Debe enviar hostUserId en el CreateCodeDto");
         }
 
-        // El service va a crear el GameEntity en BD con defaults y crear el player del host
         Game createdGame = gameService.createLobbyWithDefaults(dto.getHostUserId());
-
-        // Mapeo a GameResponseDto
         GameResponseDto response = gameMapper.toResponseDto(createdGame);
 
-        // HTTP 201 Created
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-
-
-    //obtiene los datos completos del juego a través del gamecode
+    /**
+     * Obtiene los datos completos del juego a través del gameCode.
+     * GET /api/games/{gameCode}
+     */
     @GetMapping("/{gameCode}")
     public ResponseEntity<GameResponseDto> getGameByCode(@PathVariable String gameCode) {
         try {
@@ -70,99 +62,66 @@ public class GameController {
         }
     }
 
-    //obtiene un DTO con playerId y un mapa de countryId a cantidadDeEjercitosAPoner a través del gamecode
-    @PostMapping("/{gameCode}/place-initial-armies")
-    public ResponseEntity<String> placeInitialArmies(
-            @PathVariable String gameCode,
-            @RequestBody InitialArmyPlacementDto dto) {
-        try {
-            gameService.prepareInitialPlacementPhase(gameCode, dto.getPlayerId(), dto.getArmiesByCountry());
-            return ResponseEntity.ok("Armies in place.");
-        } catch (GameNotFoundException | PlayerNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("InternalError");
-        }
-    }
-
-
     /**
-     * Unirse a partida existente.
-     * Recibe JoinGameDto con:
-     *  - gameCode (String)
-     *  - userId   (Long)
+     * Permite a un usuario unirse a una partida existente.
+     * POST /api/games/join
      */
     @PostMapping("/join")
-    public ResponseEntity<GameResponseDto> joinGame(@RequestBody JoinGameDto dto) {
+    public ResponseEntity<GameResponseDto> joinGame(@Valid @RequestBody JoinGameDto dto) {
         if (dto.getGameCode() == null || dto.getUserId() == null) {
             throw new IllegalArgumentException("Debe enviar gameCode y userId en el JoinGameDto");
         }
+
         Game updatedGame = gameService.joinGame(dto);
         GameResponseDto response = gameMapper.toResponseDto(updatedGame);
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Añadir bots a la partida (solo el anfitrión).
-     * Recibe AddBotsDto con:
-     *  - gameCode     (String)
-     *  - numberOfBots (Integer)
-     *  - botLevel     (BotLevel)
-     *  - botStrategy  (BotStrategy)
-     *  - requesterId  (Long)
+     * Añade bots a la partida (solo el anfitrión).
+     * POST /api/games/add-bots
      */
     @PostMapping("/add-bots")
-    public ResponseEntity<GameResponseDto> addBotsToGame(@RequestBody AddBotsDto dto) {
+    public ResponseEntity<GameResponseDto> addBotsToGame(@Valid @RequestBody AddBotsDto dto) {
         if (dto.getGameCode() == null || dto.getRequesterId() == null) {
             throw new IllegalArgumentException("Debe enviar gameCode y requesterId en el AddBotsDto");
         }
-        Game existing = gameService.findByGameCode(dto.getGameCode());
 
-        if (existing.getCreatedByUserId() == null) {
-            throw new IllegalStateException("Error interno: createdByUserId es null para gameCode=" + dto.getGameCode());
-        }
-        if (!dto.getRequesterId().equals(existing.getCreatedByUserId())) {
-            throw new ForbiddenException("Solo el anfitrión puede agregar bots a la partida");
-        }
+        // Validar que el requesterId es el host (se hace en el servicio)
         Game updatedGame = gameService.addBotsToGame(dto);
         GameResponseDto response = gameMapper.toResponseDto(updatedGame);
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Iniciar la partida (solo el anfitrión).
-     * Recibe StartGameDto con:
-     *  - gameCode (String)
-     *  - userId   (Long)
+     * Inicia la partida (solo el anfitrión).
+     * POST /api/games/start
      */
     @PostMapping("/start")
-    public ResponseEntity<GameResponseDto> startGame(@RequestBody StartGameDto dto) {
+    public ResponseEntity<GameResponseDto> startGame(@Valid @RequestBody StartGameDto dto) {
         if (dto.getGameCode() == null || dto.getUserId() == null) {
             throw new IllegalArgumentException("Debe enviar gameCode y userId en el StartGameDto");
         }
+
+        // Validar que el userId es el host
         Game existing = gameService.findByGameCode(dto.getGameCode());
         if (!Objects.equals(existing.getCreatedByUserId(), dto.getUserId())) {
             throw new ForbiddenException("Solo el anfitrión puede iniciar la partida");
         }
-        Game startedGame = gameService.startGame(dto.getGameCode());
 
+        Game startedGame = gameService.startGame(dto.getGameCode());
         GameResponseDto response = gameMapper.toResponseDto(startedGame);
         return ResponseEntity.ok(response);
     }
 
     /**
-     * Actualizar configuraciones del juego (solo el anfitrión).
-     * Recibe UpdateGameSettingsDto con:
-     *  - requesterId    (Long)     - ID del usuario que hace la petición
-     *  - maxPlayers     (Integer)  - Nuevo límite de jugadores (opcional)
-     *  - turnTimeLimit  (Integer)  - Nuevo límite de tiempo por turno (opcional)
-     *  - chatEnabled    (Boolean)  - Habilitar/deshabilitar chat (opcional)
-     *  - pactsAllowed   (Boolean)  - Permitir/prohibir pactos (opcional)
+     * Actualiza configuraciones del juego (solo el anfitrión).
+     * PUT /api/games/{gameCode}/settings
      */
     @PutMapping("/{gameCode}/settings")
-    public ResponseEntity<GameResponseDto> updateGameSettings(@PathVariable String gameCode, @RequestBody UpdateGameSettingsDto dto) {
+    public ResponseEntity<GameResponseDto> updateGameSettings(
+            @PathVariable String gameCode,
+            @Valid @RequestBody UpdateGameSettingsDto dto) {
 
         if (dto.getRequesterId() == null) {
             throw new IllegalArgumentException("requesterId is required");
@@ -176,12 +135,10 @@ public class GameController {
 
     /**
      * Expulsa a un jugador de la partida (solo el host puede hacerlo).
-     * Recibe: { "gameCode": "...", "playerId": 2 }
-     * Retorna: 200 + GameResponseDto actualizado (sin el jugador expulsado).
+     * POST /api/games/kick-player
      */
-
     @PostMapping("/kick-player")
-    public ResponseEntity<GameResponseDto> kickPlayer(@RequestBody KickPlayerDto dto) {
+    public ResponseEntity<GameResponseDto> kickPlayer(@Valid @RequestBody KickPlayerDto dto) {
         if (dto.getGameCode() == null || dto.getPlayerId() == null) {
             throw new IllegalArgumentException("Debe enviar gameCode y playerId en el KickPlayerDto");
         }
@@ -200,20 +157,42 @@ public class GameController {
         }
     }
 
-
     /**
-     * Permite a un jugador salir voluntariamente del jeugo mientras esta en el lobby
-     * Solo es valido cuando el jeugo esta en estado Waiting_for_players
-
-     * recibe: { "gameCode": "...", "playerId": 2 }
-     * Devuelve: 200 +  GameResponseDto Actualizado (Sin el jugador que se fue).
+     * Permite a un jugador salir voluntariamente del juego mientras está en el lobby.
+     * POST /api/games/leave
      */
     @PostMapping("/leave")
-    public ResponseEntity<GameResponseDto> leaveGame(@RequestBody LeaveGameDto dto) {
+    public ResponseEntity<GameResponseDto> leaveGame(@Valid @RequestBody LeaveGameDto dto) {
         if (dto.getGameCode() == null || dto.getUserId() == null) {
             throw new BadRequestException("Debe enviar gameCode y userId en el LeaveGameDto");
         }
+
         Game game = gameService.leaveGame(dto);
         return ResponseEntity.ok(gameMapper.toResponseDto(game));
+    }
+
+    /**
+     * Endpoint legacy para colocación inicial de ejércitos.
+     * Redirige al servicio especializado para mantener compatibilidad.
+     *
+     * @deprecated Usar InitialPlacementController en su lugar
+     */
+    @PostMapping("/{gameCode}/place-initial-armies")
+    public ResponseEntity<String> placeInitialArmiesLegacy(
+            @PathVariable String gameCode,
+            @Valid @RequestBody InitialArmyPlacementDto dto) {
+
+        try {
+            // Usar el servicio especializado directamente
+            initialPlacementService.placeInitialArmies(gameCode, dto.getPlayerId(), dto.getArmiesByCountry());
+            return ResponseEntity.ok("Armies placed successfully. Consider using /api/games/{gameCode}/initial-placement/place-armies for new implementations.");
+
+        } catch (GameNotFoundException | PlayerNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalArgumentException | InvalidGameStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal Error: " + e.getMessage());
+        }
     }
 }
