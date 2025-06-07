@@ -1,6 +1,7 @@
 package ar.edu.utn.frc.tup.piii.service.impl;
 
 import ar.edu.utn.frc.tup.piii.model.enums.GameState;
+import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import ar.edu.utn.frc.tup.piii.model.enums.TurnPhase;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.model.Player;
@@ -8,7 +9,9 @@ import ar.edu.utn.frc.tup.piii.service.interfaces.GameStateService;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class GameStateServiceImpl implements GameStateService {
@@ -167,14 +170,39 @@ public class GameStateServiceImpl implements GameStateService {
 
     // Siguiente jugador
     private void nextPlayer(Game game) {
-        int nextIndex = (game.getCurrentPlayerIndex() + 1) % game.getPlayers().size();
-        game.setCurrentPlayerIndex(nextIndex);
-
-        // Saltar jugadores eliminados
-        Player nextPlayer = game.getPlayers().get(nextIndex);
-        if (nextPlayer.isEliminated()) {
-            nextPlayer(game); // Recursivo hasta encontrar jugador activo
+        if (game.getPlayers() == null || game.getPlayers().isEmpty()) {
+            return;
         }
+
+        // Obtener jugadores activos ordenados por seatOrder
+        List<Player> activePlayers = game.getPlayers().stream()
+                .filter(p -> p.getStatus() != PlayerStatus.ELIMINATED)
+                .sorted(Comparator.comparing(Player::getSeatOrder))
+                .collect(Collectors.toList());
+
+        if (activePlayers.isEmpty()) {
+            game.setCurrentPlayerIndex(null);
+            return;
+        }
+
+        // Encontrar el siguiente jugador
+        int currentIndex = game.getCurrentPlayerIndex() != null ? game.getCurrentPlayerIndex() : -1;
+        int nextSeatOrder = -1;
+
+        // Buscar el siguiente seatOrder válido
+        for (Player player : activePlayers) {
+            if (player.getSeatOrder() > currentIndex) {
+                nextSeatOrder = player.getSeatOrder();
+                break;
+            }
+        }
+
+        // Si no encontramos uno mayor, volvemos al primero (wrap around)
+        if (nextSeatOrder == -1 && !activePlayers.isEmpty()) {
+            nextSeatOrder = activePlayers.get(0).getSeatOrder();
+        }
+
+        game.setCurrentPlayerIndex(nextSeatOrder);
     }
 
     // Verificar si se puede realizar una acción
@@ -304,3 +332,4 @@ public class GameStateServiceImpl implements GameStateService {
         }
     }
 }
+

@@ -61,10 +61,17 @@ public class Game {
     }
 
     public Player getCurrentPlayer() {
-        if (players.isEmpty() || currentPlayerIndex >= players.size()) {
+        if (players == null || players.isEmpty() || currentPlayerIndex == null) {
             return null;
         }
-        return players.get(currentPlayerIndex);
+
+        // Buscar el jugador que tiene seatOrder = currentPlayerIndex
+        return players.stream()
+                .filter(p -> p.getSeatOrder() != null &&
+                        p.getSeatOrder().equals(currentPlayerIndex) &&
+                        p.getStatus() != PlayerStatus.ELIMINATED)
+                .findFirst()
+                .orElse(null);
     }
 
     public void nextPlayer() {

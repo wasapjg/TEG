@@ -15,6 +15,7 @@ import ar.edu.utn.frc.tup.piii.repository.PlayerRepository;
 import ar.edu.utn.frc.tup.piii.service.interfaces.PlayerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -76,7 +77,7 @@ public class PlayerServiceImpl implements PlayerService {
 
     @Override
     public List<Player> findActivePlayersByGame(Game game) {
-       // return playerRepository.findByGameAndStatus(game, PlayerStatus.ACTIVE);
+        // return playerRepository.findByGameAndStatus(game, PlayerStatus.ACTIVE);
         GameEntity entity = gameMapper.toEntity(game);
         List<PlayerEntity> playerEntity = playerRepository.findActivePlayersByGame(entity);
         if (playerEntity.isEmpty()) {
@@ -200,19 +201,15 @@ public class PlayerServiceImpl implements PlayerService {
 
 
     @Override
+    @Transactional
     public void addArmiesToPlace(Long playerId, int armies) {
-        playerRepository.findById(playerId).ifPresent(player -> {
-            player.setArmiesToPlace(player.getArmiesToPlace() + armies);
-            playerRepository.save(player);
-        });
+        playerRepository.addArmiesToPlace(playerId, armies);
     }
 
     @Override
+    @Transactional
     public void removeArmiesToPlace(Long playerId, int armies) {
-        playerRepository.findById(playerId).ifPresent(player -> {
-            player.setArmiesToPlace(Math.max(0, player.getArmiesToPlace() - armies));
-            playerRepository.save(player);
-        });
+        playerRepository.removeArmiesToPlace(playerId, armies);
     }
 
     @Override

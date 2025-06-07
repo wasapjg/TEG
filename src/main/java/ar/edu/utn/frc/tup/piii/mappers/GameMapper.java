@@ -7,6 +7,7 @@ import ar.edu.utn.frc.tup.piii.entities.GameEntity;
 import ar.edu.utn.frc.tup.piii.entities.GameTerritoryEntity;
 import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
 import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.model.Territory;
 import ar.edu.utn.frc.tup.piii.model.enums.GameState;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
@@ -157,7 +158,7 @@ public class GameMapper {
                 .createdAt(model.getCreatedAt())
                 .startedAt(model.getStartedAt())
                 .finishedAt(model.getFinishedAt())
-                .currentPlayerName(model.getCreatedByUsername())
+                .currentPlayerName(getCurrentPlayerName(model))
                 .canStart(
                         model.getState() == GameState.WAITING_FOR_PLAYERS &&
                                 model.getPlayers() != null &&
@@ -209,5 +210,26 @@ public class GameMapper {
         }
 
         return builder.build();
+
+
+    }
+    private String getCurrentPlayerName(Game model) {
+        if (model.getPlayers() == null || model.getPlayers().isEmpty()) {
+            return null;
+        }
+
+        if (model.getCurrentPlayerIndex() == null) {
+            return null;
+        }
+
+        // Buscar el jugador con el seatOrder que corresponde al currentPlayerIndex
+        Player currentPlayer = model.getPlayers().stream()
+                .filter(p -> p.getSeatOrder() != null &&
+                        p.getSeatOrder().equals(model.getCurrentPlayerIndex()) &&
+                        p.getStatus() != PlayerStatus.ELIMINATED)
+                .findFirst()
+                .orElse(null);
+
+        return currentPlayer != null ? currentPlayer.getDisplayName() : null;
     }
 }

@@ -6,6 +6,7 @@ import ar.edu.utn.frc.tup.piii.entities.UserEntity;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -33,4 +34,12 @@ public interface PlayerRepository extends JpaRepository<PlayerEntity, Long> {
 
     @Query("SELECT COUNT(p) FROM PlayerEntity p WHERE p.user = :user AND p.status != 'ELIMINATED'")
     long countActiveGamesByUser(@Param("user") UserEntity user);
+
+    @Modifying
+    @Query("UPDATE PlayerEntity p SET p.armiesToPlace = p.armiesToPlace + :armies WHERE p.id = :playerId")
+    void addArmiesToPlace(@Param("playerId") Long playerId, @Param("armies") int armies);
+
+    @Modifying
+    @Query("UPDATE PlayerEntity p SET p.armiesToPlace = GREATEST(0, p.armiesToPlace - :armies) WHERE p.id = :playerId")
+    void removeArmiesToPlace(@Param("playerId") Long playerId, @Param("armies") int armies);
 }
