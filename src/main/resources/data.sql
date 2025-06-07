@@ -266,19 +266,19 @@ INSERT INTO bot_profiles (level, strategy, bot_name) VALUES
 
 -- insertar usuarios para probar endopoints
 INSERT INTO USERS (ID, USERNAME, EMAIL, PASSWORD_HASH, IS_ACTIVE, CREATED_AT)
-VALUES (1, 'usuario1', 'usuario1@example.com', 'hash1', TRUE, CURRENT_TIMESTAMP);
+VALUES (1, 'usuario1', 'usuario1@example.com', 'Hash123#', TRUE, CURRENT_TIMESTAMP);
 
 INSERT INTO USERS (ID, USERNAME, EMAIL, PASSWORD_HASH, IS_ACTIVE, CREATED_AT)
-VALUES (2, 'usuario2', 'usuario2@example.com', 'hash2', TRUE, CURRENT_TIMESTAMP);
+VALUES (2, 'usuario2', 'usuario2@example.com', 'Hash234#', TRUE, CURRENT_TIMESTAMP);
 
 INSERT INTO USERS (ID, USERNAME, EMAIL, PASSWORD_HASH, IS_ACTIVE, CREATED_AT)
-VALUES (3, 'usuario3', 'usuario3@example.com', 'hash3', TRUE, CURRENT_TIMESTAMP);
+VALUES (3, 'usuario3', 'usuario3@example.com', 'Hash345#', TRUE, CURRENT_TIMESTAMP);
 
 INSERT INTO USERS (ID, USERNAME, EMAIL, PASSWORD_HASH, IS_ACTIVE, CREATED_AT)
-VALUES (4, 'usuario4', 'usuario4@example.com', 'hash4', TRUE, CURRENT_TIMESTAMP);
+VALUES (4, 'usuario4', 'usuario4@example.com', 'Hash456#', TRUE, CURRENT_TIMESTAMP);
 INSERT INTO USERS (ID, USERNAME, EMAIL, PASSWORD_HASH, IS_ACTIVE, CREATED_AT)
-VALUES (5, 'usuario5', 'usuario5@example.com', 'hash5', TRUE, CURRENT_TIMESTAMP);
+VALUES (5, 'usuario5', 'usuario5@example.com', 'Hash567#', TRUE, CURRENT_TIMESTAMP);
 
 INSERT INTO USERS (ID, USERNAME, EMAIL, PASSWORD_HASH, IS_ACTIVE, CREATED_AT)
-VALUES (6, 'usuario6', 'usuario6@example.com', 'hash6', TRUE, CURRENT_TIMESTAMP);
+VALUES (6, 'usuario6', 'usuario6@example.com', 'Hash678#', TRUE, CURRENT_TIMESTAMP);
 

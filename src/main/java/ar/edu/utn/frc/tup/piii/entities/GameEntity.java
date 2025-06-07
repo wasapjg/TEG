@@ -25,7 +25,7 @@ public class GameEntity {
     private String gameCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by", nullable = false)
+    @JoinColumn(name = "created_by", nullable = true)
     private UserEntity createdBy;
 
     @Enumerated(EnumType.STRING)

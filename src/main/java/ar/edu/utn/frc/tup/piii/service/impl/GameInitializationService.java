@@ -8,6 +8,7 @@ import ar.edu.utn.frc.tup.piii.model.enums.ObjectiveType;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import ar.edu.utn.frc.tup.piii.repository.GameRepository;
+import ar.edu.utn.frc.tup.piii.repository.PlayerRepository; // AGREGAR ESTO
 import ar.edu.utn.frc.tup.piii.service.interfaces.*;
 import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,15 +18,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/**
- * Servicio especializado en la inicialización de partidas TEG.
- * Maneja el reparto de países, asignación de objetivos y preparación de la fase inicial.
- * Solo usa GameRepository directamente y se comunica con otros servicios a través de sus interfaces.
- */
 @Service
 public class GameInitializationService {
     @Autowired
     private GameRepository gameRepository;
+
+    @Autowired
+    private PlayerRepository playerRepository; // AGREGAR ESTO - USAR DIRECTAMENTE
 
     // Servicios para comunicación entre capas
     @Autowired
@@ -52,8 +51,8 @@ public class GameInitializationService {
 
         validateGameCanStart(game);
 
-        // 1. Asignar orden de jugadores
-        assignSeatOrder(game);
+        // 1. Asignar orden de jugadores - CORREGIDO
+        assignSeatOrderFixed(gameEntity);
 
         // 2. Repartir países según reglamento TEG
         distributeCountries(game);
@@ -67,6 +66,62 @@ public class GameInitializationService {
         // 5. Configurar estado del juego
         setupGameState(gameEntity, game);
     }
+
+    /**
+     * METODO CORREGIDO: Asigna orden aleatorio trabajando directamente con entidades
+     */
+    private void assignSeatOrderFixed(GameEntity gameEntity) {
+        // Trabajar directamente con las entidades para evitar problemas de mapeo
+        List<PlayerEntity> playerEntities = gameEntity.getPlayers();
+
+        // Filtrar solo jugadores activos/esperando
+        List<PlayerEntity> activePlayers = playerEntities.stream()
+                .filter(p -> p.getStatus() != PlayerStatus.ELIMINATED)
+                .collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+
+        // Mezclar aleatoriamente
+        Collections.shuffle(activePlayers, random);
+
+        // Asignar orden y estado
+        for (int i = 0; i < activePlayers.size(); i++) {
+            PlayerEntity player = activePlayers.get(i);
+            player.setSeatOrder(i);
+            player.setStatus(PlayerStatus.ACTIVE);
+
+            // Asegurar que no hay valores nulos
+            if (player.getArmiesToPlace() == null) {
+                player.setArmiesToPlace(0);
+            }
+            if (player.getJoinedAt() == null) {
+                player.setJoinedAt(LocalDateTime.now());
+            }
+
+            // IMPORTANTE: Asegurar que game_id no se pierda
+            player.setGame(gameEntity);
+        }
+
+        // Guardar todos los cambios usando el repositorio directamente
+        playerRepository.saveAll(activePlayers);
+    }
+
+    /**
+     * METODO ORIGINAL COMENTADO PARA REFERENCIA
+     */
+    /*
+    private void assignSeatOrder(Game game) {
+        List<Player> players = new ArrayList<>(game.getPlayers());
+        Collections.shuffle(players, random);
+
+        for (int i = 0; i < players.size(); i++) {
+            Player player = players.get(i);
+            // Actualizar el modelo
+            player.setSeatOrder(i);
+            player.setStatus(PlayerStatus.ACTIVE);
+            // PROBLEMA: Aquí se pierde game_id al convertir modelo -> entidad
+            playerService.save(player); // <- AQUI ESTA EL PROBLEMA
+        }
+    }
+    */
 
     /**
      * Valida que el juego puede iniciarse según las reglas.
@@ -86,26 +141,7 @@ public class GameInitializationService {
     }
 
     /**
-     * Asigna orden aleatorio a los jugadores (reglamento TEG).
-     */
-    private void assignSeatOrder(Game game) {
-        List<Player> players = new ArrayList<>(game.getPlayers());
-        Collections.shuffle(players, random);
-
-        for (int i = 0; i < players.size(); i++) {
-            Player player = players.get(i);
-            // Actualizar el modelo
-            player.setSeatOrder(i);
-            player.setStatus(PlayerStatus.ACTIVE);
-            // Guardar a través del servicio
-            playerService.save(player);
-        }
-    }
-
-    /**
-     * Reparte países según el reglamento TEG:
-     * - Se reparten todos los países entre jugadores
-     * - Los países sobrantes se asignan por tirada de dados
+     * Reparte países según el reglamento TEG
      */
     private void distributeCountries(Game game) {
         // Obtener todos los países disponibles a través del servicio de territorios
@@ -113,7 +149,7 @@ public class GameInitializationService {
         Collections.shuffle(allTerritories, random);
 
         List<Player> activePlayers = game.getPlayers().stream()
-                .filter(p -> p.getStatus() == PlayerStatus.ACTIVE)
+                .filter(p -> p.getStatus() != PlayerStatus.ELIMINATED)
                 .sorted(Comparator.comparing(Player::getSeatOrder))
                 .toList();
 
@@ -133,7 +169,7 @@ public class GameInitializationService {
         // Reparto de países sobrantes por "tirada de dados"
         if (remainingCountries > 0) {
             List<Player> playersForExtra = new ArrayList<>(activePlayers);
-            Collections.shuffle(playersForExtra, random); // Simula tirada de dados
+            Collections.shuffle(playersForExtra, random);
 
             for (int i = 0; i < remainingCountries; i++) {
                 assignCountryToPlayer(game, allTerritories.get(countryIndex++), playersForExtra.get(i));
@@ -145,7 +181,6 @@ public class GameInitializationService {
      * Asigna un país a un jugador a través del servicio de territorios.
      */
     private void assignCountryToPlayer(Game game, Territory territory, Player player) {
-        // Usar el servicio de territorios para asignar
         gameTerritoryService.assignTerritoryToPlayer(game.getId(), territory.getId(), player.getId(), 1);
     }
 
@@ -158,7 +193,7 @@ public class GameInitializationService {
         Collections.shuffle(availableObjectives, random);
 
         List<Player> activePlayers = game.getPlayers().stream()
-                .filter(p -> p.getStatus() == PlayerStatus.ACTIVE)
+                .filter(p -> p.getStatus() != PlayerStatus.ELIMINATED)
                 .sorted(Comparator.comparing(Player::getSeatOrder))
                 .toList();
 
@@ -178,7 +213,6 @@ public class GameInitializationService {
 
     /**
      * Maneja la asignación de objetivos de destrucción según el reglamento.
-     * Si el objetivo no es válido, lo cambia por "destruir al jugador de la derecha".
      */
     private Objective handleDestructionObjective(Objective objective, Player player, List<Player> players) {
         PlayerColor targetColor = objective.getTargetColor();
@@ -209,13 +243,11 @@ public class GameInitializationService {
     }
 
     /**
-     * Prepara la fase inicial de colocación según el reglamento TEG:
-     * - Primera ronda: 5 ejércitos por jugador
-     * - Segunda ronda: 3 ejércitos por jugador
+     * Prepara la fase inicial de colocación según el reglamento TEG.
      */
     private void prepareInitialPlacement(Game game) {
         List<Player> activePlayers = game.getPlayers().stream()
-                .filter(p -> p.getStatus() == PlayerStatus.ACTIVE)
+                .filter(p -> p.getStatus() == PlayerStatus.ELIMINATED)
                 .toList();
 
         // Cada jugador debe colocar 8 ejércitos en total (5 + 3)
