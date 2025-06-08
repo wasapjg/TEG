@@ -19,5 +19,4 @@ public class UserResponseDto {
     private LocalDateTime createdAt;
     private LocalDateTime lastLogin;
     private Boolean isActive;
-    private UserStatsDto stats;
 }

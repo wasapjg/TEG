@@ -8,6 +8,7 @@ import ar.edu.utn.frc.tup.piii.model.Territory;
 import ar.edu.utn.frc.tup.piii.service.interfaces.CombatService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameTerritoryService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 @Service
+@Slf4j
 public class CombatServiceImpl implements CombatService {
 
     @Autowired
@@ -28,11 +30,15 @@ public class CombatServiceImpl implements CombatService {
     private final Random random = new Random();
 
     /**
-     * Ejecuta un combate completo entre dos territorios.
+     * Ejecuta un combate completo entre dos territorios según las reglas del TEG.
      */
     @Override
     @Transactional
     public CombatResultDto performCombat(String gameCode, AttackDto attackDto) {
+        log.info("Starting combat in game {} - Player {} attacking from {} to {} with {} armies",
+                gameCode, attackDto.getPlayerId(), attackDto.getAttackerCountryId(),
+                attackDto.getDefenderCountryId(), attackDto.getAttackingArmies());
+
         // 1. Obtener el juego y validar estado
         Game game = gameService.findByGameCode(gameCode);
         validateGameStateForCombat(game);
@@ -44,18 +50,25 @@ public class CombatServiceImpl implements CombatService {
                 game.getId(), attackDto.getDefenderCountryId());
 
         // 3. Validar el ataque
-        validateAttack(game, attackDto, attackerTerritory, defenderTerritory);
+        validateAttack(attackDto, attackerTerritory, defenderTerritory);
 
         // 4. Determinar cantidad de dados
         int attackerDiceCount = determineAttackerDice(attackerTerritory, attackDto.getAttackingArmies());
         int defenderDiceCount = determineDefenderDice(defenderTerritory);
 
+        log.debug("Combat dice - Attacker: {} dice, Defender: {} dice", attackerDiceCount, defenderDiceCount);
+
         // 5. Tirar dados
         List<Integer> attackerDice = rollDice(attackerDiceCount);
         List<Integer> defenderDice = rollDice(defenderDiceCount);
 
+        log.debug("Dice results - Attacker: {}, Defender: {}", attackerDice, defenderDice);
+
         // 6. Resolver combate
         CombatResult combatResult = resolveCombat(attackerDice, defenderDice);
+
+        log.debug("Combat result - Attacker losses: {}, Defender losses: {}",
+                combatResult.attackerLosses, combatResult.defenderLosses);
 
         // 7. Aplicar pérdidas
         applyLosses(game.getId(), attackDto, combatResult);
@@ -63,11 +76,23 @@ public class CombatServiceImpl implements CombatService {
         // 8. Verificar conquista
         boolean territoryConquered = checkAndHandleConquest(game.getId(), attackDto, combatResult);
 
-        // 9. Construir resultado
-        return buildCombatResultDto(
+        // 9. Obtener estados actualizados para el resultado
+        Territory updatedAttacker = gameTerritoryService.getTerritoryByGameAndCountry(
+                game.getId(), attackDto.getAttackerCountryId());
+        Territory updatedDefender = gameTerritoryService.getTerritoryByGameAndCountry(
+                game.getId(), attackDto.getDefenderCountryId());
+
+        // 10. Construir resultado
+        CombatResultDto result = buildCombatResultDto(
                 attackerTerritory, defenderTerritory,
                 attackerDice, defenderDice,
-                combatResult, territoryConquered);
+                combatResult, territoryConquered,
+                updatedAttacker, updatedDefender);
+
+        log.info("Combat completed - Territory conquered: {}, Final armies - Attacker: {}, Defender: {}",
+                territoryConquered, updatedAttacker.getArmies(), updatedDefender.getArmies());
+
+        return result;
     }
 
     /**
@@ -88,7 +113,7 @@ public class CombatServiceImpl implements CombatService {
     /**
      * Valida que el ataque sea legal según las reglas del TEG.
      */
-    private void validateAttack(Game game, AttackDto attackDto, Territory attacker, Territory defender) {
+    private void validateAttack(AttackDto attackDto, Territory attacker, Territory defender) {
         // Verificar que los territorios existan
         if (attacker == null) {
             throw new IllegalArgumentException("Attacker territory not found: " + attackDto.getAttackerCountryId());
@@ -107,8 +132,8 @@ public class CombatServiceImpl implements CombatService {
             throw new IllegalArgumentException("Cannot attack your own territory");
         }
 
-        // Verificar que sean territorios vecinos
-        if (!areTerritoriesNeighbors(attacker.getId(), defender.getId())) {
+        // Verificar que sean territorios vecinos (CORREGIDO)
+        if (!gameTerritoryService.areTerritoriesNeighbors(attacker.getId(), defender.getId())) {
             throw new IllegalArgumentException("Territories are not neighbors");
         }
 
@@ -118,7 +143,7 @@ public class CombatServiceImpl implements CombatService {
         }
 
         // Verificar ejércitos atacantes válidos
-        int maxAttackingArmies = attacker.getArmies() - 1; // Debe dejar al menos 1
+        int maxAttackingArmies = Math.min(3, attacker.getArmies() - 1); // Máximo 3, debe dejar al menos 1
         if (attackDto.getAttackingArmies() < 1 || attackDto.getAttackingArmies() > maxAttackingArmies) {
             throw new IllegalArgumentException(
                     String.format("Invalid attacking armies. Must be between 1 and %d", maxAttackingArmies));
@@ -126,7 +151,7 @@ public class CombatServiceImpl implements CombatService {
     }
 
     /**
-     * Determina la cantidad de dados que puede usar el atacante.
+     * Determina la cantidad de dados que puede usar el atacante según las reglas del TEG.
      */
     private int determineAttackerDice(Territory attacker, int attackingArmies) {
         // En TEG: 1 ejército = 1 dado, máximo 3 dados
@@ -134,10 +159,10 @@ public class CombatServiceImpl implements CombatService {
     }
 
     /**
-     * Determina la cantidad de dados que puede usar el defensor.
+     * Determina la cantidad de dados que puede usar el defensor según las reglas del TEG.
      */
     private int determineDefenderDice(Territory defender) {
-        // En TEG: Defensor puede usar 1-2 dados según sus ejércitos
+        // En TEG: Defensor puede usar hasta 3 dados según sus ejércitos
         return Math.min(3, defender.getArmies());
     }
 
@@ -215,6 +240,9 @@ public class CombatServiceImpl implements CombatService {
             gameTerritoryService.addArmiesToTerritory(
                     gameId, attackDto.getAttackerCountryId(), -armiesToMove);
 
+            log.info("Territory {} conquered by player {} with {} armies",
+                    attackDto.getDefenderCountryId(), attackDto.getPlayerId(), armiesToMove);
+
             return true;
         }
 
@@ -227,13 +255,8 @@ public class CombatServiceImpl implements CombatService {
     private CombatResultDto buildCombatResultDto(
             Territory attackerTerritory, Territory defenderTerritory,
             List<Integer> attackerDice, List<Integer> defenderDice,
-            CombatResult result, boolean territoryConquered) {
-
-        // Obtener estados actualizados de los territorios
-        Territory updatedAttacker = gameTerritoryService.getTerritoryByGameAndCountry(
-                attackerTerritory.getId(), attackerTerritory.getId());
-        Territory updatedDefender = gameTerritoryService.getTerritoryByGameAndCountry(
-                defenderTerritory.getId(), defenderTerritory.getId());
+            CombatResult result, boolean territoryConquered,
+            Territory updatedAttacker, Territory updatedDefender) {
 
         return CombatResultDto.builder()
                 .attackerCountryId(attackerTerritory.getId())
@@ -248,34 +271,15 @@ public class CombatServiceImpl implements CombatService {
                 .defenderLosses(result.defenderLosses)
                 .territoryConquered(territoryConquered)
                 .attackerRemainingArmies(updatedAttacker != null ? updatedAttacker.getArmies() : 0)
-                .defenderRemainingArmies(updatedDefender != null ? updatedDefender.getArmies() : 0)
+                .defenderRemainingArmies(territoryConquered ? 0 :
+                        (updatedDefender != null ? updatedDefender.getArmies() : 0))
                 .build();
-    }
-
-    /**
-     * Verifica si dos territorios son vecinos.
-     */
-    private boolean areTerritoriesNeighbors(Long territoryId1, Long territoryId2) {
-        return gameTerritoryService.areTerritoriesNeighbors(territoryId1, territoryId2);
-    }
-
-    /**
-     * Clase interna para resultado de combate.
-     */
-    private static class CombatResult {
-        final int attackerLosses;
-        final int defenderLosses;
-
-        CombatResult(int attackerLosses, int defenderLosses) {
-            this.attackerLosses = attackerLosses;
-            this.defenderLosses = defenderLosses;
-        }
     }
 
     // === MÉTODOS DE UTILIDAD ===
 
     /**
-     * Obtiene todos los territorios que un jugador puede atacar.
+     * Obtiene todos los territorios que un jugador puede usar para atacar.
      */
     @Override
     public List<Territory> getAttackableTerritoriesForPlayer(String gameCode, Long playerId) {
@@ -293,10 +297,36 @@ public class CombatServiceImpl implements CombatService {
     @Override
     public List<Territory> getTargetsForTerritory(String gameCode, Long territoryId, Long playerId) {
         Game game = gameService.findByGameCode(gameCode);
+
+        // Verificar que el jugador es dueño del territorio
+        Territory ownTerritory = gameTerritoryService.getTerritoryByGameAndCountry(game.getId(), territoryId);
+        if (ownTerritory == null || !playerId.equals(ownTerritory.getOwnerId())) {
+            throw new IllegalArgumentException("Player doesn't own the specified territory");
+        }
+
+        // Verificar que el territorio puede atacar
+        if (ownTerritory.getArmies() <= 1) {
+            return Collections.emptyList();
+        }
+
+        // Obtener territorios vecinos
         List<Territory> neighbors = gameTerritoryService.getNeighborTerritories(game.getId(), territoryId);
 
         return neighbors.stream()
                 .filter(neighbor -> !playerId.equals(neighbor.getOwnerId())) // No es suyo
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Clase interna para resultado de combate.
+     */
+    private static class CombatResult {
+        final int attackerLosses;
+        final int defenderLosses;
+
+        CombatResult(int attackerLosses, int defenderLosses) {
+            this.attackerLosses = attackerLosses;
+            this.defenderLosses = defenderLosses;
+        }
     }
 }
