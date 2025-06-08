@@ -200,8 +200,10 @@ public class GameController {
         }
     }
 
-    @PostMapping("/test-combat")
-    public ResponseEntity<CombatResultDto> testCombat(@RequestBody AttackDto attackDto) {
-        return ResponseEntity.ok(combatService.performCombat("TU_GAME_CODE", attackDto));
+    @PostMapping("/test-combat/{gameCode}")
+    public ResponseEntity<CombatResultDto> testCombat(
+            @PathVariable String gameCode,
+            @RequestBody AttackDto attackDto) {
+        return ResponseEntity.ok(combatService.performCombat(gameCode, attackDto));
     }
 }

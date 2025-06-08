@@ -138,7 +138,7 @@ public class CombatServiceImpl implements CombatService {
      */
     private int determineDefenderDice(Territory defender) {
         // En TEG: Defensor puede usar 1-2 dados según sus ejércitos
-        return Math.min(2, defender.getArmies());
+        return Math.min(3, defender.getArmies());
     }
 
     /**

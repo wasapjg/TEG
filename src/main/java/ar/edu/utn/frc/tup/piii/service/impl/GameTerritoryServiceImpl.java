@@ -14,8 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -238,11 +237,7 @@ public class GameTerritoryServiceImpl implements GameTerritoryService {
      */
     @Override
     public boolean areTerritoriesNeighbors(Long countryId1, Long countryId2) {
-        CountryEntity country1 = countryRepository.findById(countryId1)
-                .orElseThrow(() -> new IllegalArgumentException("Country not found with id: " + countryId1));
-
-        return country1.getNeighbors().stream()
-                .anyMatch(neighbor -> neighbor.getId().equals(countryId2));
+        return countryRepository.areCountriesNeighbors(countryId1, countryId2);
     }
 
     /**
@@ -250,18 +245,22 @@ public class GameTerritoryServiceImpl implements GameTerritoryService {
      */
     @Override
     public List<Territory> getNeighborTerritories(Long gameId, Long countryId) {
-        GameEntity game = gameRepository.findById(gameId)
-                .orElseThrow(() -> new GameNotFoundException("Game not found with id: " + gameId));
+        Set<Long> neighborIds = new HashSet<>();
 
-        List<CountryEntity> neighbors = countryRepository.findNeighborsByCountryId(countryId);
+        // 1. Obtener vecinos directos (donde countryId es el "country_id" en la tabla)
+        CountryEntity country = countryRepository.findById(countryId).orElse(null);
+        if (country != null) {
+            country.getNeighbors().forEach(neighbor -> neighborIds.add(neighbor.getId()));
+        }
 
-        return neighbors.stream()
-                .map(neighbor -> {
-                    Optional<GameTerritoryEntity> territoryOpt =
-                            gameTerritoryRepository.findByGameAndCountry(game, neighbor);
-                    return territoryOpt.map(this::convertToTerritory).orElse(null);
-                })
-                .filter(territory -> territory != null)
+        // 2. Obtener vecinos inversos (donde countryId es el "neighbor_id" en la tabla)
+        List<CountryEntity> countriesWithThisAsNeighbor = countryRepository.findCountriesThatHaveAsNeighbor(countryId);
+        countriesWithThisAsNeighbor.forEach(c -> neighborIds.add(c.getId()));
+
+        // 3. Convertir IDs de países a territorios del juego específico
+        return neighborIds.stream()
+                .map(neighborId -> getTerritoryByGameAndCountry(gameId, neighborId))
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
