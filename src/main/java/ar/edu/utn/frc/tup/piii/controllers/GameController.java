@@ -175,4 +175,35 @@ public class GameController {
         return ResponseEntity.ok(gameMapper.toResponseDto(game));
     }
 
+    /**
+     * Endpoint legacy para colocación inicial de ejércitos.
+     * Redirige al servicio especializado para mantener compatibilidad.
+     *
+     * @deprecated Usar InitialPlacementController en su lugar
+     */
+    @PostMapping("/{gameCode}/place-initial-armies")
+    public ResponseEntity<String> placeInitialArmiesLegacy(
+            @PathVariable String gameCode,
+            @Valid @RequestBody InitialArmyPlacementDto dto) {
+
+        try {
+            // Usar el servicio especializado directamente
+            initialPlacementService.placeInitialArmies(gameCode, dto.getPlayerId(), dto.getArmiesByCountry());
+            return ResponseEntity.ok("Armies placed successfully. Consider using /api/games/{gameCode}/initial-placement/place-armies for new implementations.");
+
+        } catch (GameNotFoundException | PlayerNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (IllegalArgumentException | InvalidGameStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal Error: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/test-combat/{gameCode}")
+    public ResponseEntity<CombatResultDto> testCombat(
+            @PathVariable String gameCode,
+            @RequestBody AttackDto attackDto) {
+        return ResponseEntity.ok(combatService.performCombat(gameCode, attackDto));
+    }
 }

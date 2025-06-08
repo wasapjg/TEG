@@ -278,7 +278,7 @@ class CombatServiceImplTest {
         // Given
         attackerTerritory.setArmies(10); // Many armies
         defenderTerritory.setArmies(10); // Many armies
-        attackDto.setAttackingArmies(5); // 5 armies attacking (but max 3 dice)
+        attackDto.setAttackingArmies(3); // 5 armies attacking (but max 3 dice)
 
         when(gameService.findByGameCode("TEST123")).thenReturn(game);
         when(gameTerritoryService.getTerritoryByGameAndCountry(1L, 1L)).thenReturn(attackerTerritory);

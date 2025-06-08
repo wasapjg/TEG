@@ -1,5 +1,6 @@
 package ar.edu.utn.frc.tup.piii.dtos.game;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -23,6 +24,7 @@ public class AttackDto {
 
     @NotNull(message = "Attacking armies is required")
     @Min(value = 1, message = "Must attack with at least 1 army")
+    @Max(value = 3, message = "Cannot attack with more than 3 armies at once")
     private Integer attackingArmies;
 
     // Opcional: si quieres permitir al usuario elegir dados
