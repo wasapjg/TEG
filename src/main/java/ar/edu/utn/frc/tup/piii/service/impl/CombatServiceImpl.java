@@ -27,7 +27,8 @@ public class CombatServiceImpl implements CombatService {
     @Autowired
     private GameService gameService;
 
-    private final Random random = new Random();
+    @Autowired
+    private Random random;
 
     /**
      * Ejecuta un combate completo entre dos territorios según las reglas del TEG.
@@ -43,6 +44,7 @@ public class CombatServiceImpl implements CombatService {
         Game game = gameService.findByGameCode(gameCode);
         validateGameStateForCombat(game);
 
+//        Territory at = game.getTerritories();
         // 2. Obtener territorios involucrados
         Territory attackerTerritory = gameTerritoryService.getTerritoryByGameAndCountry(
                 game.getId(), attackDto.getAttackerCountryId());

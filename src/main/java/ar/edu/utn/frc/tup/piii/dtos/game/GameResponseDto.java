@@ -44,7 +44,7 @@ public class GameResponseDto {
     private List<PlayerResponseDto> players;
 
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
-    private Map<Long, CountryResponseDto> territories;
+    private List<CountryResponseDto> territories;
 
     @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<ContinentResponseDto> continents;

@@ -39,7 +39,8 @@ public class GameInitializationService {
     @Autowired
     private GameMapper gameMapper;
 
-    private final Random random = new Random();
+    @Autowired
+    private Random random;
 
     /**
      * Inicializa una partida completa: reparto de países, objetivos y preparación inicial.
@@ -52,7 +53,7 @@ public class GameInitializationService {
         validateGameCanStart(game);
 
         // 1. Asignar orden de jugadores - CORREGIDO
-        assignSeatOrderFixed(gameEntity);
+        assignSeatOrder(gameEntity);
 
         // 2. Repartir países según reglamento TEG
         distributeCountries(game);
@@ -73,7 +74,7 @@ public class GameInitializationService {
     /**
      * METODO CORREGIDO: Asigna orden aleatorio trabajando directamente con entidades
      */
-    private void assignSeatOrderFixed(GameEntity gameEntity) {
+    private void assignSeatOrder(GameEntity gameEntity) {
         // Trabajar directamente con las entidades para evitar problemas de mapeo
         List<PlayerEntity> playerEntities = gameEntity.getPlayers();
 

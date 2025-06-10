@@ -17,19 +17,10 @@ public enum PlayerColor {
     private final String hexColor;
     private static final List<PlayerColor> VALUES =
             Collections.unmodifiableList(Arrays.asList(values()));
-    private static final Random RANDOM = new Random();
 
 
     PlayerColor(String hexColor) {
         this.hexColor = hexColor;
-    }
-
-    public String getHexColor() {
-        return hexColor;
-    }
-
-    public static PlayerColor randomColor() {
-        return VALUES.get(RANDOM.nextInt(VALUES.size()));
     }
 
 }

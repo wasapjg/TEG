@@ -14,6 +14,8 @@ import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.Map;
@@ -70,8 +72,8 @@ public class GameMapper {
                 .build();
     }
 
-    private Map<Long, Territory> mapTerritories(java.util.List<GameTerritoryEntity> territoryEntities) {
-        Map<Long, Territory> territories = new HashMap<>();
+    private List<Territory> mapTerritories(java.util.List<GameTerritoryEntity> territoryEntities) {
+        List<Territory> territories = new ArrayList<>();
         for (GameTerritoryEntity entity : territoryEntities) {
             Territory territory = Territory.builder()
                     .id(entity.getCountry().getId())
@@ -84,7 +86,7 @@ public class GameMapper {
                             .map(CountryEntity::getId)
                             .collect(Collectors.toSet()))
                     .build();
-            territories.put(territory.getId(), territory);
+            territories.add(territory);
         }
         return territories;
     }
@@ -107,15 +109,6 @@ public class GameMapper {
         entity.setStartedAt(model.getStartedAt());
         entity.setFinishedAt(model.getFinishedAt());
         entity.setLastModified(model.getLastModified());
-
-
-        if (model.getContinents() != null) {
-            entity.setContinents(
-                    model.getContinents().stream()
-                            .map(continentMapper::toEntity)
-                            .collect(Collectors.toList())
-            );
-        }
 
         return entity;
     }
@@ -176,21 +169,9 @@ public class GameMapper {
         }
 
         if (model.getTerritories() != null && !model.getTerritories().isEmpty()) {
-            Map<Long, CountryResponseDto> mappedTerritories =
-                    model.getTerritories().entrySet().stream()
-                            .collect(Collectors.toMap(
-                                    Map.Entry::getKey,
-                                    entry -> territoryMapper.toResponseDto(entry.getValue())
-                            ));
+            List<CountryResponseDto> mappedTerritories =
+                    model.getTerritories().stream().map(territory -> territoryMapper.toResponseDto(territory)).toList();
             builder.territories(mappedTerritories);
-        }
-
-        if (model.getContinents() != null && !model.getContinents().isEmpty()) {
-            builder.continents(
-                    model.getContinents().stream()
-                            .map(c -> continentMapper.toResponseDto(c, model.getTerritories()))
-                            .collect(Collectors.toList())
-            );
         }
 
         if (model.getEvents() != null && !model.getEvents().isEmpty()) {

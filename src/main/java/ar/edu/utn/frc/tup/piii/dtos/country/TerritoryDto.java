@@ -14,6 +14,4 @@ public class TerritoryDto {
     private String name;
     private String continentName;
     private Integer armies;
-    private Double positionX;
-    private Double positionY;
 }

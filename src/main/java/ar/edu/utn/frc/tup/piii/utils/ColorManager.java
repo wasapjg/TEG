@@ -5,6 +5,7 @@ import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -13,7 +14,8 @@ import java.util.stream.Collectors;
 @Component
 public class ColorManager {
 
-    private static final Random RANDOM = new Random();
+    @Autowired
+    private Random random;
 
     // Reemplazamos Game por GameEntity:
     public PlayerColor getAvailableRandomColor(GameEntity gameEntity) {
@@ -26,7 +28,7 @@ public class ColorManager {
                 .collect(Collectors.toList());
 
         return availableColors.isEmpty() ?
-                PlayerColor.values()[RANDOM.nextInt(PlayerColor.values().length)] :
-                availableColors.get(RANDOM.nextInt(availableColors.size()));
+                PlayerColor.values()[random.nextInt(PlayerColor.values().length)] :
+                availableColors.get(random.nextInt(availableColors.size()));
     }
 }

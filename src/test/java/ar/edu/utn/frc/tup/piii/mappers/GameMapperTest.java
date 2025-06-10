@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -237,8 +238,8 @@ class GameMapperTest {
         assertThat(result.getTerritories()).isNotNull();
         assertThat(result.getTerritories()).hasSize(1);
 
-        Map<Long, Territory> territories = result.getTerritories();
-        Territory territory = territories.get(1L);
+        List<Territory> territories = result.getTerritories();
+        Territory territory = territories.get(1);
 
         assertThat(territory).isNotNull();
         assertThat(territory.getId()).isEqualTo(1L);
@@ -271,7 +272,7 @@ class GameMapperTest {
         Game result = gameMapper.toModel(gameEntity);
 
         // Then
-        Territory territory = result.getTerritories().get(1L);
+        Territory territory = result.getTerritories().get(1);
         assertThat(territory.getOwnerName()).isEqualTo("Test Bot");
     }
 
@@ -294,7 +295,7 @@ class GameMapperTest {
         Game result = gameMapper.toModel(gameEntity);
 
         // Then
-        Territory territory = result.getTerritories().get(1L);
+        Territory territory = result.getTerritories().get(1);
         assertThat(territory.getOwnerName()).isEqualTo("Unknown");
     }
 
@@ -316,7 +317,7 @@ class GameMapperTest {
         Game result = gameMapper.toModel(gameEntity);
 
         // Then
-        Territory territory = result.getTerritories().get(1L);
+        Territory territory = result.getTerritories().get(1);
         assertThat(territory.getOwnerId()).isNull();
         assertThat(territory.getOwnerName()).isNull();
     }
@@ -396,7 +397,7 @@ class GameMapperTest {
         Game result = gameMapper.toModel(gameEntity);
 
         // Then
-        Territory territory = result.getTerritories().get(1L);
+        Territory territory = result.getTerritories().get(1);
         assertThat(territory.getNeighborIds()).hasSize(1);
         assertThat(territory.getNeighborIds()).contains(2L);
     }

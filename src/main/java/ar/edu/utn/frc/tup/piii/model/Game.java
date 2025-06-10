@@ -37,10 +37,7 @@ public class Game {
     private List<Player> players = new ArrayList<>();
 
     @Builder.Default
-    private Map<Long, Territory> territories = new HashMap<>();
-
-    @Builder.Default
-    private List<Continent> continents = new ArrayList<>();
+    private List<Territory> territories = new ArrayList<>();
 
     @Builder.Default
     private List<Card> deck = new ArrayList<>();
@@ -51,14 +48,6 @@ public class Game {
     @Builder.Default
     private List<ChatMessage> chatMessages = new ArrayList<>();
 
-    // Business logic methods
-//    public boolean hasSlot() {
-//        return players.size() < maxPlayers;
-//    }
-
-    public boolean isOver() {
-        return state == GameState.FINISHED;
-    }
 
     public Player getCurrentPlayer() {
         if (players == null || players.isEmpty() || currentPlayerIndex == null) {
@@ -74,17 +63,6 @@ public class Game {
                 .orElse(null);
     }
 
-    public void nextPlayer() {
-        if (!players.isEmpty()) {
-            currentPlayerIndex = (currentPlayerIndex + 1) % players.size();
-        }
-    }
-
-    public void nextTurn() {
-        currentTurn++;
-        currentPlayerIndex = 0;
-    }
-
     public boolean canStart() {
         return players.size() >= 2 && state == GameState.WAITING_FOR_PLAYERS;
     }
@@ -94,11 +72,5 @@ public class Game {
                 .filter(p -> p.getStatus() != PlayerStatus.ELIMINATED)
                 .count();
     }
-
-    public boolean hasSlot() {
-        return getActivePlayerCount() < maxPlayers;
-    }
-
-
 
 }

@@ -18,8 +18,6 @@ public class CountryMapper {
                 .continentName(model.getContinentName())
                 .ownerName(model.getOwnerName())
                 .armies(model.getArmies())
-                .positionX(model.getPositionX())
-                .positionY(model.getPositionY())
                 .neighborIds(model.getNeighborIds() != null ? model.getNeighborIds() : null)
                 .canBeAttacked(false) // Lógica de “puede ser atacado” según tu modelo
                 .canAttack(false)     // Lógica de “puede atacar” según tu modelo
@@ -32,8 +30,6 @@ public class CountryMapper {
                 .name(territory.getName())
                 .continentName(territory.getContinentName())
                 .armies(territory.getArmies())
-                .positionX(territory.getPositionX())
-                .positionY(territory.getPositionY())
                 .build();
     }
 }
