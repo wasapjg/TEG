@@ -10,12 +10,16 @@ import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.model.Territory;
 import ar.edu.utn.frc.tup.piii.model.enums.GameState;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
+import ar.edu.utn.frc.tup.piii.repository.CountryRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.List;
 
 @Component
 public class GameMapper {
@@ -32,6 +36,8 @@ public class GameMapper {
     private TerritoryMapper territoryMapper;
     @Autowired
     private ContinentMapper continentMapper;
+    @Autowired
+    private CountryRepository countryRepository;
 
     public Game toModel(GameEntity entity) {
         if (entity == null) return null;
@@ -72,6 +78,17 @@ public class GameMapper {
     private Map<Long, Territory> mapTerritories(java.util.List<GameTerritoryEntity> territoryEntities) {
         Map<Long, Territory> territories = new HashMap<>();
         for (GameTerritoryEntity entity : territoryEntities) {
+            // Get both direct and inverse neighbors
+            Set<Long> neighborIds = new HashSet<>();
+            
+            // Direct neighbors (where this country is the source)
+            entity.getCountry().getNeighbors().forEach(neighbor -> neighborIds.add(neighbor.getId()));
+            
+            // Inverse neighbors (where other countries have this country as neighbor)
+            List<CountryEntity> countriesWithThisAsNeighbor = countryRepository
+                    .findCountriesThatHaveAsNeighbor(entity.getCountry().getId());
+            countriesWithThisAsNeighbor.forEach(c -> neighborIds.add(c.getId()));
+            
             Territory territory = Territory.builder()
                     .id(entity.getCountry().getId())
                     .name(entity.getCountry().getName())
@@ -79,9 +96,7 @@ public class GameMapper {
                     .ownerId(entity.getOwner() != null ? entity.getOwner().getId() : null)
                     .ownerName(entity.getOwner() != null ? getPlayerDisplayName(entity.getOwner()) : null)
                     .armies(entity.getArmies())
-                    .neighborIds(entity.getCountry().getNeighbors().stream()
-                            .map(CountryEntity::getId)
-                            .collect(Collectors.toSet()))
+                    .neighborIds(neighborIds)
                     .build();
             territories.put(territory.getId(), territory);
         }

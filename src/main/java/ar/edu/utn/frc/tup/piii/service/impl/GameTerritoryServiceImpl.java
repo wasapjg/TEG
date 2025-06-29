@@ -305,14 +305,23 @@ public class GameTerritoryServiceImpl implements GameTerritoryService {
          * Convierte un CountryEntity a Territory básico (sin propietario).
          */
         private Territory convertCountryToTerritory(CountryEntity country) {
+                // Get both direct and inverse neighbors
+                Set<Long> neighborIds = new HashSet<>();
+                
+                // Direct neighbors (where this country is the source)
+                country.getNeighbors().forEach(neighbor -> neighborIds.add(neighbor.getId()));
+                
+                // Inverse neighbors (where other countries have this country as neighbor)
+                List<CountryEntity> countriesWithThisAsNeighbor = countryRepository
+                        .findCountriesThatHaveAsNeighbor(country.getId());
+                countriesWithThisAsNeighbor.forEach(c -> neighborIds.add(c.getId()));
+                
                 return Territory.builder()
                                 .id(country.getId())
                                 .name(country.getName())
                                 .continentName(country.getContinent().getName())
                                 .armies(1) // Por defecto
-                                .neighborIds(country.getNeighbors().stream()
-                                                .map(CountryEntity::getId)
-                                                .collect(Collectors.toSet()))
+                                .neighborIds(neighborIds)
                                 .build();
         }
 
@@ -320,6 +329,7 @@ public class GameTerritoryServiceImpl implements GameTerritoryService {
          * Convierte un GameTerritoryEntity a Territory completo.
          */
         private Territory convertToTerritory(GameTerritoryEntity entity) {
+
             String ownerName = null;
             if (entity.getOwner() != null) {
                 // CAMBIO: Usar PlayerMapper para obtener el displayName correcto

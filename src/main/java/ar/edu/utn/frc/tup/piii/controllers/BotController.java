@@ -45,19 +45,17 @@ public class BotController {
     private final GameStateService gameStateService;
     private final GameMapper gameMapper;
     private final PlayerMapper playerMapper;
-    private final MappingsEndpoint mappingsEndpoint;
 
     @Autowired
     public BotController(BotService botService, GameService gameService, PlayerService playerService,
-                         GameStateService gameStateService, GameMapper gameMapper, PlayerMapper playerMapper,
-                         MappingsEndpoint mappingsEndpoint) {
+                         GameStateService gameStateService, GameMapper gameMapper, PlayerMapper playerMapper
+                         ) {
         this.botService = botService;
         this.gameService = gameService;
         this.playerService = playerService;
         this.gameStateService = gameStateService;
         this.gameMapper = gameMapper;
         this.playerMapper = playerMapper;
-        this.mappingsEndpoint = mappingsEndpoint;
     }
 
     /**

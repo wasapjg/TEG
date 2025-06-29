@@ -3,10 +3,7 @@ package ar.edu.utn.frc.tup.piii.service.impl;
 import ar.edu.utn.frc.tup.piii.entities.*;
 import ar.edu.utn.frc.tup.piii.exceptions.InvalidGameStateException;
 import ar.edu.utn.frc.tup.piii.model.*;
-import ar.edu.utn.frc.tup.piii.model.enums.GameState;
-import ar.edu.utn.frc.tup.piii.model.enums.ObjectiveType;
-import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
-import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
+import ar.edu.utn.frc.tup.piii.model.enums.*;
 import ar.edu.utn.frc.tup.piii.repository.GameRepository;
 import ar.edu.utn.frc.tup.piii.repository.PlayerRepository; // AGREGAR ESTO
 import ar.edu.utn.frc.tup.piii.service.interfaces.*;
@@ -216,6 +213,7 @@ public class GameInitializationServiceImpl {
 
     private void setupGameState(GameEntity gameEntity, Game game) {
         gameEntity.setStatus(GameState.REINFORCEMENT_5); // ARRANCO CON 5, LUEGO 3 Y LUEGO JUEGO NORMALLLLL RECORDAR
+        gameEntity.setCurrentPhase(TurnPhase.REINFORCEMENT);
         gameEntity.setStartedAt(LocalDateTime.now());
         gameEntity.setCurrentTurn(1);
         gameEntity.setCurrentPlayerIndex(0); // (seatOrder = 0)

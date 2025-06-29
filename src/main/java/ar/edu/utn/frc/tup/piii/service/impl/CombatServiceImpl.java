@@ -68,6 +68,7 @@ public class CombatServiceImpl implements CombatService {
 
         // construir resultado
         return buildCombatResultDto(
+                game.getId(),
                 attackerTerritory, defenderTerritory,
                 attackerDice, defenderDice,
                 combatResult, territoryConquered);
@@ -204,14 +205,16 @@ public class CombatServiceImpl implements CombatService {
     }
 
     private CombatResultDto buildCombatResultDto(
+            Long gameId,
             Territory attackerTerritory, Territory defenderTerritory,
             List<Integer> attackerDice, List<Integer> defenderDice,
             CombatResult result, boolean territoryConquered) {
 
+        // Get updated territories after the combat
         Territory updatedAttacker = gameTerritoryService.getTerritoryByGameAndCountry(
-                attackerTerritory.getId(), attackerTerritory.getId());
+                gameId, attackerTerritory.getId());
         Territory updatedDefender = gameTerritoryService.getTerritoryByGameAndCountry(
-                defenderTerritory.getId(), defenderTerritory.getId());
+                gameId, defenderTerritory.getId());
 
         return CombatResultDto.builder()
                 .attackerCountryId(attackerTerritory.getId())

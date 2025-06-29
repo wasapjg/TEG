@@ -50,10 +50,25 @@ public class CombatController {
             @PathVariable String gameCode,
             @Valid @RequestBody AttackDto attackDto) {
 
+        log.info("Attack requested in game {} by player {} from territory {} to territory {}",
+                gameCode, attackDto.getPlayerId(), attackDto.getAttackerCountryId(), attackDto.getDefenderCountryId());
+
         try {
-            CombatResultDto result = combatService.performCombatWithValidation(gameCode, attackDto);
+            // Validar que el juego permite ataques
+            Game game = gameService.findByGameCode(gameCode);
+            validateGameStateForCombat(game);
+            validatePlayerTurn(game, attackDto.getPlayerId());
+
+            // Ejecutar el combate
+            CombatResultDto result = combatService.performCombat(gameCode, attackDto);
+
+            log.info("Attack completed. Territory conquered: {}, Attacker losses: {}, Defender losses: {}",
+                    result.getTerritoryConquered(), result.getAttackerLosses(), result.getDefenderLosses());
+
             return ResponseEntity.ok(result);
-        } catch (IllegalStateException e) {
+
+        } catch (Exception e) {
+            log.error("Error during attack in game {}: {}", gameCode, e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
