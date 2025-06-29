@@ -3,6 +3,12 @@ package ar.edu.utn.frc.tup.piii.controllers;
 import ar.edu.utn.frc.tup.piii.dtos.chat.ChatMessageDto;
 import ar.edu.utn.frc.tup.piii.dtos.chat.ChatMessageResponseDto;
 import ar.edu.utn.frc.tup.piii.service.interfaces.ChatService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,19 +20,36 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/games")
 @CrossOrigin(origins = "*")
+@Tag(name = "Chat", description = "Sistema de chat en tiempo real para las partidas")
 public class ChatController {
 
     @Autowired
     private ChatService chatService;
 
-    /**
-     * Envía un mensaje de chat a un juego específico.
-     *
-     * @param gameCode Código único del juego
-     * @param messageDto Datos del mensaje a enviar
-     * @return ResponseEntity con el mensaje enviado y código HTTP 201 (CREATED)
-     */
     @PostMapping("/{gameCode}/chat")
+    @Operation(
+            summary = "Enviar mensaje de chat",
+            description = "Envía un mensaje de chat a todos los participantes de una partida específica"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Mensaje enviado exitosamente",
+                    content = @Content(schema = @Schema(implementation = ChatMessageResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Datos del mensaje inválidos o partida no permite chat"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida no encontrada"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Error interno del servidor"
+            )
+    })
     public ResponseEntity<ChatMessageResponseDto> sendMessage(
             @PathVariable String gameCode,
             @Valid @RequestBody ChatMessageDto messageDto) {
@@ -41,18 +64,26 @@ public class ChatController {
         }
     }
 
-    /**
-     * Obtiene los mensajes nuevos de chat de un juego específico.
-     *
-     * Este endpoint soporta polling incremental:
-     * - Sin parámetro 'since': devuelve todos los mensajes del juego
-     * - Con parámetro 'since': devuelve solo mensajes posteriores al ID especificado
-     *
-     * @param gameCode Código único del juego
-     * @param since ID del último mensaje conocido (opcional)
-     * @return ResponseEntity con la lista de mensajes y código HTTP 200 (OK)
-     */
     @GetMapping("/{gameCode}/chat/new")
+    @Operation(
+            summary = "Obtener mensajes nuevos",
+            description = "Obtiene mensajes de chat nuevos desde un punto específico. Soporta polling incremental para actualizaciones en tiempo real."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Mensajes obtenidos exitosamente",
+                    content = @Content(schema = @Schema(implementation = ChatMessageResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Parámetro 'since' inválido"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida no encontrada"
+            )
+    })
     public ResponseEntity<List<ChatMessageResponseDto>> getNewMessages(
             @PathVariable String gameCode,
             @RequestParam(value = "since", required = false) String since) {
@@ -69,14 +100,26 @@ public class ChatController {
         }
     }
 
-    /**
-     * Endpoint adicional para obtener todos los mensajes de un juego
-     * (útil para cargar el historial completo)
-     *
-     * @param gameCode Código único del juego
-     * @return ResponseEntity con todos los mensajes del juego
-     */
     @GetMapping("/{gameCode}/chat")
+    @Operation(
+            summary = "Obtener historial completo de chat",
+            description = "Obtiene todos los mensajes de chat de una partida. Útil para cargar el historial completo al unirse a una partida."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Historial de chat obtenido exitosamente",
+                    content = @Content(schema = @Schema(implementation = ChatMessageResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida no encontrada"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Error interno del servidor"
+            )
+    })
     public ResponseEntity<List<ChatMessageResponseDto>> getAllMessages(
             @PathVariable String gameCode) {
 

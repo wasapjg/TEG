@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class GameServiceImpl implements GameService {
@@ -105,6 +106,21 @@ public class GameServiceImpl implements GameService {
     }
 
     @Override
+    public List<Game> findGamesByHost(Long userId) {
+        try {
+            // Buscar por el campo createdByUserId en GameEntity
+            List<GameEntity> gameEntities = gameRepository.findByCreatedByIdOrderByCreatedAtDesc(userId);
+
+            return gameEntities.stream()
+                    .map(gameMapper::toModel)
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error retrieving hosted games", e);
+        }
+    }
+
+    @Override
     @Transactional
     public Game joinGame(JoinGameDto dto) {
         GameEntity gameEntity = findGameEntityByCode(dto.getGameCode());
@@ -178,6 +194,18 @@ public class GameServiceImpl implements GameService {
         gameInitializationService.initializeGame(gameEntity);
         GameEntity savedGame = gameRepository.save(gameEntity);
         return gameMapper.toModel(savedGame);
+    }
+
+    @Override
+    @Transactional
+    public Game startGameByHost(String gameCode, Long hostUserId) {
+        Game existing = findByGameCode(gameCode);
+
+        if (!Objects.equals(existing.getCreatedByUserId(), hostUserId)) {
+            throw new ForbiddenException("Solo el anfitrión puede iniciar la partida");
+        }
+
+        return startGame(gameCode);
     }
 
     @Override
@@ -411,12 +439,29 @@ public class GameServiceImpl implements GameService {
     }
 
     private void addBotsToGame(GameEntity gameEntity, int numberOfBots, BotProfileEntity botProfile) {
+        int botsAdded = 0;
         for (int i = 0; i < numberOfBots; i++) {
+            gameEntity = gameRepository.findById(gameEntity.getId())
+                    .orElseThrow(() -> new GameNotFoundException("Game not found"));
             PlayerColor availableColor = colorManager.getAvailableRandomColor(gameEntity);
             if (availableColor == null) break;
 
             PlayerEntity botPlayer = createBotPlayer(gameEntity, botProfile, availableColor);
             playerRepository.save(botPlayer);
+
+            gameEntity.getPlayers().add(botPlayer);
+
+            // Establecer la relación bidireccional
+            botPlayer.setGame(gameEntity);
+
+            // Guardar en base de datos
+            PlayerEntity savedBot = playerRepository.save(botPlayer);
+
+            // Actualizar la referencia en la lista con el bot guardado (con ID)
+            gameEntity.getPlayers().remove(botPlayer); // Quitar el temporal
+            gameEntity.getPlayers().add(savedBot);     // Agregar el persistido
+
+            botsAdded++;
         }
     }
 
@@ -425,6 +470,7 @@ public class GameServiceImpl implements GameService {
                 .mapToInt(PlayerEntity::getSeatOrder)
                 .max()
                 .orElse(-1) + 1;
+
 
         PlayerEntity botPlayer = new PlayerEntity();
         botPlayer.setBotProfile(botProfile);

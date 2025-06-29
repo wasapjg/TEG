@@ -15,6 +15,10 @@ import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameStateService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.PlayerService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,8 +60,6 @@ public class BotController {
         this.mappingsEndpoint = mappingsEndpoint;
     }
 
-    // ===== ENDPOINTS RELACIONADOS CON JUEGOS =====
-
     /**
      * Ejecuta el turno completo de un bot (Refuerzo -> Ataque -> Fortificación).
      * Los bots siempre ejecutan todas las fases automáticamente.
@@ -69,56 +71,35 @@ public class BotController {
     @PostMapping("/games/{gameCode}/{botId}/execute-turn")
     @Operation(summary = "Ejecutar turno completo del bot",
             description = "El bot ejecuta automáticamente todas las fases: refuerzo, ataque y fortificación")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Turno del bot ejecutado exitosamente",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "No es el turno del bot, juego en estado inválido, o bot no encontrado"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida o bot no encontrado"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Bot no puede ejecutar turno en el estado actual del juego"
+            )
+    })
     public ResponseEntity<GameResponseDto> executeBotTurn(
             @PathVariable String gameCode,
             @PathVariable Long botId) {
 
-        log.info("Executing complete bot turn for bot {} in game {}", botId, gameCode);
-
         try {
-            // Validar que el bot existe y es efectivamente un bot
-            Optional<Player> botPlayerOpt = playerService.findById(botId);
-            if (botPlayerOpt.isEmpty() || !botPlayerOpt.get().getIsBot()) {
-                log.warn("Bot not found or not a bot with ID: {}", botId);
-                return ResponseEntity.badRequest().build();
-            }
-
-            Player botPlayer = botPlayerOpt.get();
-            Game game = gameService.findByGameCode(gameCode);
-
-            // Validar que es el turno del bot
-            if (!gameStateService.isPlayerTurn(game, botId)) {
-                log.warn("It's not bot's turn. Bot: {}, Current player: {}", botId, game.getCurrentPlayerIndex());
-                return ResponseEntity.badRequest().build();
-            }
-
-            // Validar que el juego está en estado PLAYING
-            if (!gameStateService.canPerformAction(game, "bot_turn")) {
-                log.warn("Game not in valid state for bot turn execution: {}", game.getState());
-                return ResponseEntity.badRequest().build();
-            }
-
-            // Ejecutar el turno completo del bot
-            PlayerEntity botEntity = playerMapper.toEntity(botPlayer);
-            GameEntity gameEntity = gameMapper.toEntity(game);
-
-            // El bot ejecuta automáticamente todas las fases
-            botService.executeBotTurn(botEntity, gameEntity);
-
-            // Avanzar al siguiente turno
-            gameStateService.nextTurn(game);
-
-            // Guardar cambios
-            Game savedGame = gameService.save(game);
-            GameResponseDto response = gameMapper.toResponseDto(savedGame);
-
-            log.info("Bot {} successfully completed turn in game {}. Next player: {}",
-                    botId, gameCode, savedGame.getCurrentPlayerIndex());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Error executing bot turn for bot {} in game {}: {}", botId, gameCode, e.getMessage());
+            GameResponseDto result = botService.executeBotTurnComplete(gameCode, botId);
+            return ResponseEntity.ok(result);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().build();
         }
     }
@@ -133,6 +114,21 @@ public class BotController {
     @GetMapping("/games/{gameCode}/{botId}/status")
     @Operation(summary = "Obtener estado del bot en juego",
             description = "Devuelve información sobre el bot y su estado actual en el juego específico")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Estado del bot obtenido exitosamente",
+                    content = @Content(schema = @Schema(implementation = BotStatusDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "ID de bot inválido o no es un bot"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Bot o partida no encontrada"
+            )
+    })
     public ResponseEntity<BotStatusDto> getBotStatus(
             @PathVariable String gameCode,
             @PathVariable Long botId) {
@@ -176,6 +172,21 @@ public class BotController {
     @GetMapping("/games/{gameCode}")
     @Operation(summary = "Listar bots del juego",
             description = "Devuelve todos los bots participantes en el juego específico")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Lista de bots obtenida exitosamente",
+                    content = @Content(schema = @Schema(implementation = BotStatusDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida no encontrada"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Código de partida inválido"
+            )
+    })
     public ResponseEntity<List<BotStatusDto>> getGameBots(@PathVariable String gameCode) {
         try {
             Game game = gameService.findByGameCode(gameCode);
@@ -215,6 +226,17 @@ public class BotController {
     @GetMapping("/profiles")
     @Operation(summary = "Listar perfiles de bots por nivel",
             description = "Devuelve todos los perfiles de bots disponibles de un nivel específico")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Perfiles de bots obtenidos exitosamente",
+                    content = @Content(schema = @Schema(implementation = BotProfileEntity.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Nivel de bot inválido"
+            )
+    })
     public ResponseEntity<List<BotProfileEntity>> getBotsByLevel(@RequestParam BotLevel level) {
         try {
             List<BotProfileEntity> botProfiles = botService.findByLevel(level);
@@ -233,6 +255,17 @@ public class BotController {
     @GetMapping("/profiles/all")
     @Operation(summary = "Listar todos los perfiles de bots",
             description = "Devuelve todos los perfiles de bots disponibles")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Todos los perfiles de bots obtenidos exitosamente",
+                    content = @Content(schema = @Schema(implementation = BotProfileEntity.class))
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Error interno del servidor"
+            )
+    })
     public ResponseEntity<List<BotProfileEntity>> getAllBotProfiles() {
         try {
             List<BotProfileEntity> botProfiles = botService.findAll();
@@ -252,6 +285,21 @@ public class BotController {
     @GetMapping("/profiles/{profileId}")
     @Operation(summary = "Obtener perfil de bot por ID",
             description = "Devuelve el perfil específico de un bot")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Perfil del bot obtenido exitosamente",
+                    content = @Content(schema = @Schema(implementation = BotProfileEntity.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Perfil de bot no encontrado"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "ID de perfil inválido"
+            )
+    })
     public ResponseEntity<BotProfileEntity> getBotProfile(@PathVariable Long profileId) {
         try {
             Optional<BotProfileEntity> botProfile = botService.findById(profileId);
@@ -263,11 +311,6 @@ public class BotController {
         }
     }
 
-    // ===== CLASES DTO =====
-
-    /**
-     * DTO para información del estado del bot.
-     */
     @lombok.Data
     @lombok.Builder
     @lombok.NoArgsConstructor

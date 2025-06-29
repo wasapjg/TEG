@@ -12,4 +12,6 @@ public interface CombatService {
     List<Territory> getAttackableTerritoriesForPlayer(String gameCode, Long playerId);
 
     List<Territory> getTargetsForTerritory(String gameCode, Long territoryId, Long playerId);
+
+    CombatResultDto performCombatWithValidation(String gameCode, AttackDto attackDto);
 }

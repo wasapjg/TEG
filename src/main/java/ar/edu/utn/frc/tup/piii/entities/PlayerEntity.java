@@ -39,6 +39,9 @@ public class PlayerEntity {
     @JoinColumn(name = "objective_id")
     private ObjectiveEntity objective;
 
+    @Column(name = "trade_count")
+    private Integer tradeCount = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PlayerStatus status = PlayerStatus.WAITING;

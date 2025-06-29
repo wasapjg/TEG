@@ -27,6 +27,8 @@ public interface GameTerritoryService {
     boolean areTerritoriesNeighbors(Long countryId1, Long countryId2);
 
     List<Territory> getNeighborTerritories(Long gameId, Long countryId);
+
+    Territory getTerritoryByGameAndCountryName(Long gameId, String countryName);
    /*
     void save(GameTerritoryEntity territory);
     */

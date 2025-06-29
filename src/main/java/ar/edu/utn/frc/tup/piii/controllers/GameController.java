@@ -10,12 +10,18 @@ import ar.edu.utn.frc.tup.piii.service.impl.InitialPlacementServiceImpl;
 import ar.edu.utn.frc.tup.piii.service.interfaces.CombatService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.InitialPlacementService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Objects;
 
 @RestController
@@ -34,25 +40,22 @@ public class GameController {
     @Autowired
     private CombatService combatService;
 
-    /**
-     * Crea un nuevo lobby con configuraciones por defecto.
-     * POST /api/games/create-lobby
-     */
-    /**
-     * POST /api/games/create-lobby
-     * Recibe: { "hostUserId": Long }
-     * Crea en BD un GameEntity con:
-     *    - gameCode único
-     *    - hostUserId
-     *    - maxPlayers  = 6   (valor por defecto)
-     *    - turnTimeLimit = 120 (valor por defecto, en segundos)
-     *    - chatEnabled = true
-     *    - pactsAllowed = false
-     *    - estado = WAITING_FOR_PLAYERS
-     * Crea un PlayerEntity para el host, con color RED (por ej.), status WAITING.
-     * Retorna: GameResponseDto completo (con lista de jugadores, configuraciones, gameCode, etc.)
-     */
     @PostMapping("/create-lobby")
+    @Operation(
+            summary = "Crear nuevo lobby",
+            description = "Crea un nuevo lobby de juego con configuraciones por defecto. El usuario se convierte automáticamente en host."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Lobby creado exitosamente",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Datos inválidos para crear el lobby"
+            )
+    })
     public ResponseEntity<GameResponseDto> createLobby(@Valid @RequestBody CreateCodeDto dto) {
         if (dto.getHostUserId() == null) {
             throw new IllegalArgumentException("Debe enviar hostUserId en el CreateCodeDto");
@@ -64,11 +67,22 @@ public class GameController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    /**
-     * Obtiene los datos completos del juego a través del gameCode.
-     * GET /api/games/{gameCode}
-     */
     @GetMapping("/{gameCode}")
+    @Operation(
+            summary = "Obtener partida por código",
+            description = "Recupera los datos completos de una partida usando su código único"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Partida encontrada",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida no encontrada"
+            )
+    })
     public ResponseEntity<GameResponseDto> getGameByCode(@PathVariable String gameCode) {
         try {
             GameResponseDto game = gameService.getGameByCode(gameCode);
@@ -80,13 +94,26 @@ public class GameController {
         }
     }
 
-    /**
-     * Unirse a partida existente.
-     * Recibe JoinGameDto con:
-     *  - gameCode (String)
-     *  - userId   (Long)
-     */
     @PostMapping("/join")
+    @Operation(
+            summary = "Unirse a partida",
+            description = "Permite a un usuario unirse a una partida existente usando el código de juego"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Usuario unido exitosamente",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "No se puede unir a la partida (llena, iniciada, etc.)"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida o usuario no encontrado"
+            )
+    })
     public ResponseEntity<GameResponseDto> joinGame(@Valid @RequestBody JoinGameDto dto) {
         if (dto.getGameCode() == null || dto.getUserId() == null) {
             throw new IllegalArgumentException("Debe enviar gameCode y userId en el JoinGameDto");
@@ -97,17 +124,26 @@ public class GameController {
         return ResponseEntity.ok(response);
     }
 
-
-    /**
-     * Añadir bots a la partida (solo el anfitrión).
-     * Recibe AddBotsDto con:
-     *  - gameCode     (String)
-     *  - numberOfBots (Integer)
-     *  - botLevel     (BotLevel)
-     *  - botStrategy  (BotStrategy)
-     *  - requesterId  (Long)
-     */
     @PostMapping("/add-bots")
+    @Operation(
+            summary = "Agregar bots a la partida",
+            description = "Permite al host agregar bots con configuración específica a la partida"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Bots agregados exitosamente",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Solo el host puede agregar bots"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Configuración de bots inválida"
+            )
+    })
     public ResponseEntity<GameResponseDto> addBotsToGame(@Valid @RequestBody AddBotsDto dto) {
         if (dto.getGameCode() == null || dto.getRequesterId() == null) {
             throw new IllegalArgumentException("Debe enviar gameCode y requesterId en el AddBotsDto");
@@ -119,39 +155,56 @@ public class GameController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * Iniciar la partida (solo el anfitrión).
-     * Recibe StartGameDto con:
-     *  - gameCode (String)
-     *  - userId   (Long)
-     */
     @PostMapping("/start")
+    @Operation(
+            summary = "Iniciar partida",
+            description = "Permite al host iniciar la partida. Debe tener al menos 2 jugadores."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Partida iniciada exitosamente",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Solo el host puede iniciar la partida"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "No se puede iniciar la partida (jugadores insuficientes, etc.)"
+            )
+    })
     public ResponseEntity<GameResponseDto> startGame(@Valid @RequestBody StartGameDto dto) {
-        if (dto.getGameCode() == null || dto.getUserId() == null) {
-            throw new IllegalArgumentException("Debe enviar gameCode y userId en el StartGameDto");
+        try {
+            Game startedGame = gameService.startGameByHost(dto.getGameCode(), dto.getUserId());
+            GameResponseDto response = gameMapper.toResponseDto(startedGame);
+            return ResponseEntity.ok(response);
+        } catch (ForbiddenException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-
-        // Validar que el userId es el host
-        Game existing = gameService.findByGameCode(dto.getGameCode());
-        if (!Objects.equals(existing.getCreatedByUserId(), dto.getUserId())) {
-            throw new ForbiddenException("Solo el anfitrión puede iniciar la partida");
-        }
-
-        Game startedGame = gameService.startGame(dto.getGameCode());
-        GameResponseDto response = gameMapper.toResponseDto(startedGame);
-        return ResponseEntity.ok(response);
     }
 
-    /**
-     * Actualizar configuraciones del juego (solo el anfitrión).
-     * Recibe UpdateGameSettingsDto con:
-     *  - requesterId    (Long)     - ID del usuario que hace la petición
-     *  - maxPlayers     (Integer)  - Nuevo límite de jugadores (opcional)
-     *  - turnTimeLimit  (Integer)  - Nuevo límite de tiempo por turno (opcional)
-     *  - chatEnabled    (Boolean)  - Habilitar/deshabilitar chat (opcional)
-     *  - pactsAllowed   (Boolean)  - Permitir/prohibir pactos (opcional)
-     */
     @PutMapping("/{gameCode}/settings")
+    @Operation(
+            summary = "Actualizar configuraciones",
+            description = "Permite al host actualizar las configuraciones de la partida antes de iniciarla"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Configuraciones actualizadas exitosamente",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Solo el host puede modificar configuraciones"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Configuraciones inválidas"
+            )
+    })
     public ResponseEntity<GameResponseDto> updateGameSettings(
             @PathVariable String gameCode,
             @Valid @RequestBody UpdateGameSettingsDto dto) {
@@ -167,6 +220,15 @@ public class GameController {
     }
 
     @DeleteMapping("/{gameCode}")
+    @Operation(
+            summary = "Cancelar partida",
+            description = "Permite al host cancelar una partida que no ha iniciado"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Partida cancelada exitosamente"),
+            @ApiResponse(responseCode = "403", description = "Solo el host puede cancelar la partida"),
+            @ApiResponse(responseCode = "404", description = "Partida no encontrada")
+    })
     public ResponseEntity<Void> cancelGame(
             @PathVariable String gameCode,
             @RequestParam String username
@@ -176,13 +238,20 @@ public class GameController {
     }
 
 
-
-    /**
-     * Expulsa a un jugador de la partida (solo el host puede hacerlo).
-     * Recibe: { "gameCode": "...", "playerId": 2 }
-     * Retorna: 200 + GameResponseDto actualizado (sin el jugador expulsado).
-     */
     @PostMapping("/kick-player")
+    @Operation(
+            summary = "Expulsar jugador",
+            description = "Permite al host expulsar a un jugador de la partida"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Jugador expulsado exitosamente",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(responseCode = "403", description = "Solo el host puede expulsar jugadores"),
+            @ApiResponse(responseCode = "404", description = "Jugador o partida no encontrada")
+    })
     public ResponseEntity<GameResponseDto> kickPlayer(@Valid @RequestBody KickPlayerDto dto) {
         if (dto.getGameCode() == null || dto.getPlayerId() == null) {
             throw new IllegalArgumentException("Debe enviar gameCode y playerId en el KickPlayerDto");
@@ -202,13 +271,20 @@ public class GameController {
         }
     }
 
-    /**
-     * Permite a un jugador salir voluntariamente del juego mientras está en el lobby.
-     * POST /api/games/leave
-     * recibe: { "gameCode": "...", "playerId": 2 }
-     * Devuelve: 200 +  GameResponseDto Actualizado (Sin el jugador que se fue).
-     */
     @PostMapping("/leave")
+    @Operation(
+            summary = "Salir de partida",
+            description = "Permite a un jugador salir voluntariamente de la partida"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Jugador salió exitosamente",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(responseCode = "404", description = "Jugador o partida no encontrada"),
+            @ApiResponse(responseCode = "400", description = "No se puede salir en el estado actual")
+    })
     public ResponseEntity<GameResponseDto> leaveGame(@Valid @RequestBody LeaveGameDto dto) {
         if (dto.getGameCode() == null || dto.getUserId() == null) {
             throw new BadRequestException("Debe enviar gameCode y userId en el LeaveGameDto");
@@ -218,47 +294,40 @@ public class GameController {
         return ResponseEntity.ok(gameMapper.toResponseDto(game));
     }
 
-    /**
-     * Endpoint legacy para colocación inicial de ejércitos.
-     * Redirige al servicio especializado para mantener compatibilidad.
-     *
-     * @deprecated Usar InitialPlacementController en su lugar
-     */
-    @PostMapping("/{gameCode}/place-initial-armies")
-    public ResponseEntity<String> placeInitialArmiesLegacy(
-            @PathVariable String gameCode,
-            @Valid @RequestBody InitialArmyPlacementDto dto) {
-
+    @GetMapping("/host/{userId}")
+    @Operation(
+            summary = "Obtener partidas donde es host",
+            description = "Devuelve todas las partidas donde el usuario especificado es el host/anfitrión"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Lista de partidas donde es host",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+            @ApiResponse(responseCode = "400", description = "ID de usuario inválido")
+    })
+    public ResponseEntity<List<GameResponseDto>> getHostedGames(
+            @PathVariable Long userId
+    ) {
         try {
-            // Usar el servicio especializado directamente
-            initialPlacementService.placeInitialArmies(gameCode, dto.getPlayerId(), dto.getArmiesByCountry());
-            return ResponseEntity.ok("Armies placed successfully. Consider using /api/games/{gameCode}/initial-placement/place-armies for new implementations.");
+            List<Game> hostedGames = gameService.findGamesByHost(userId);
+            List<GameResponseDto> response = hostedGames.stream()
+                    .map(gameMapper::toResponseDto)
+                    .toList();
 
-        } catch (GameNotFoundException | PlayerNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (IllegalArgumentException | InvalidGameStateException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Internal Error: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
         }
     }
 
-    @PostMapping("/test-combat/{gameCode}")
-    public ResponseEntity<CombatResultDto> testCombat(
-        @PathVariable String gameCode, 
-        @RequestBody AttackDto attackDto) {
-        return ResponseEntity.ok(combatService.performCombat(gameCode, attackDto));
-    }
-
-    // Endpoints para reanudar partida
-
-    /**
-     * Joins a player to an existing game lobby.
-     * Corresponds to frontend: joinGameLobby(gameCode: string, playerId: string)
-     * POST /api/games/{gameCode}/join
-     * Body: { "playerId": Long }
-     */
     @PostMapping("/{gameCode}/join")
+    @Operation(
+            summary = "Unirse al lobby",
+            description = "Une un jugador a un lobby de partida existente"
+    )
     public ResponseEntity<GameResponseDto> joinGameLobby(@PathVariable String gameCode, @Valid @RequestBody PlayerIdRequestDto dto) {
         try {
             Game updatedGame = gameService.joinGameLobby(gameCode, dto.getPlayerId());
@@ -274,12 +343,11 @@ public class GameController {
         }
     }
 
-    /**
-     * Toggles the ready status of a player in a game lobby.
-     * Corresponds to frontend: togglePlayerReady(gameId: string, playerId: string)
-     * PUT /api/games/{gameId}/player/{playerId}/ready
-     */
     @PutMapping("/{gameId}/player/{playerId}/ready")
+    @Operation(
+            summary = "Alternar estado listo",
+            description = "Cambia el estado de 'listo' de un jugador en el lobby"
+    )
     public ResponseEntity<GameResponseDto> togglePlayerReady(@PathVariable String gameId, @PathVariable Long playerId) {
         try {
             Game updatedGame = gameService.togglePlayerReady(gameId, playerId);
@@ -294,12 +362,11 @@ public class GameController {
         }
     }
 
-    /**
-     * Gets the status of a game lobby.
-     * Corresponds to frontend: getGameLobbyStatus(gameId: string, playerId: string)
-     * GET /api/games/{gameId}/status?playerId={playerId}
-     */
     @GetMapping("/{gameId}/status")
+    @Operation(
+            summary = "Estado del lobby",
+            description = "Obtiene el estado actual del lobby de la partida"
+    )
     public ResponseEntity<GameResponseDto> getGameLobbyStatus(@PathVariable String gameId, @RequestParam(required = false) Long playerId) {
         try {
             Game game = gameService.getGameLobbyStatus(gameId, playerId);
@@ -312,12 +379,11 @@ public class GameController {
         }
     }
 
-    /**
-     * Resumes a game.
-     * Corresponds to frontend: resumeGame(gameId: string)
-     * POST /api/games/{gameId}/resume
-     */
     @PostMapping("/{gameId}/resume")
+    @Operation(
+            summary = "Reanudar partida",
+            description = "Reanuda una partida pausada"
+    )
     public ResponseEntity<GameResponseDto> resumeGame(@PathVariable String gameId) {
         try {
             Game resumedGame = gameService.resumeGame(gameId);
@@ -332,12 +398,11 @@ public class GameController {
         }
     }
 
-    /**
-     * Disconnects a player from a game lobby.
-     * Corresponds to frontend: disconnectFromLobby(gameId: string, playerId: string)
-     * POST /api/games/{gameId}/player/{playerId}/disconnect
-     */
     @PostMapping("/{gameId}/player/{playerId}/disconnect")
+    @Operation(
+            summary = "Desconectar del lobby",
+            description = "Desconecta un jugador del lobby de la partida"
+    )
     public ResponseEntity<GameResponseDto> disconnectFromLobby(@PathVariable String gameId, @PathVariable Long playerId) {
         try {
             Game updatedGame = gameService.disconnectFromLobby(gameId, playerId);

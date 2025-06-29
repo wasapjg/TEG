@@ -11,7 +11,6 @@ import java.util.Optional;
 
 public interface CardService {
 
-    // CRUD básico
     Card save(Card card);
     Optional<Card> findById(Long id);
     List<Card> findAll();
@@ -19,31 +18,42 @@ public interface CardService {
     List<Card> findByPlayer(Player player);
     void deleteById(Long id);
 
-    // Gestión de cartas del jugador
     List<CardResponseDto> getPlayerCards(Long playerId);
     Card drawCard(Game game, Player player);
     List<Card> drawCards(Game game, Player player, int count);
     void giveCardToPlayer(Card card, Player player);
 
-    // Intercambio de cartas
     int tradeCards(CardTradeDto tradeDto);
     boolean canTradeCards(List<Card> cards);
-    int calculateTradeValue(List<Card> cards, int tradeCount);
+
+    int calculateTradeValue(int tradeNumber);
+
     boolean isValidCardCombination(List<Card> cards);
 
-    // Validaciones
     boolean hasPlayerMaxCards(Player player);
+
     boolean mustTradeCards(Player player);
+
     int getMaxCardsAllowed();
 
-    // Tipos de cartas
     List<Card> getCardsByType(CardType type);
+
     int countCardsByType(Player player, CardType type);
+
     boolean hasThreeOfSameType(List<Card> cards);
     boolean hasOneOfEachType(List<Card> cards);
 
-    // Utilidades
     void shufflePlayerHand(Player player);
+
     Card getRandomCard(Game game);
+
     List<Card> getAllAvailableCards(Game game);
+
+    boolean canPlayerTrade(Long playerId);
+
+    boolean mustPlayerTrade(Long playerId);
+    int getPlayerTradeCount(Long playerId);
+    int getNextTradeValue(Long playerId);
+
+    void claimTerritoryBonus(Long gameId, Long playerId, String countryName);
 }

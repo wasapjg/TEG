@@ -5,6 +5,7 @@ import ar.edu.utn.frc.tup.piii.exceptions.*;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import jakarta.transaction.Transactional;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -142,5 +143,8 @@ public interface GameService {
     Game resumeGame(String gameId);
     Game disconnectFromLobby(String gameId, Long playerId);
 
+    List<Game> findGamesByHost(Long userId);
+
+    Game startGameByHost(String gameCode, Long userId);
 }
 

@@ -43,4 +43,5 @@ public interface GameRepository extends JpaRepository<GameEntity, Long> {
     Optional<GameEntity> findForSettings(@Param("gameCode") String gameCode);
 
 
+    List<GameEntity> findByCreatedByIdOrderByCreatedAtDesc(Long userId);
 }

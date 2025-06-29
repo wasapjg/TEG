@@ -5,9 +5,11 @@ import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import ar.edu.utn.frc.tup.piii.model.enums.TurnPhase;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.model.Player;
+import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameStateService;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -21,6 +23,8 @@ public class GameStateServiceImpl implements GameStateService {
 
     private static final Map<Long, Set<Long>> conquestTracker = new HashMap<>();
 
+    @Autowired
+    private GameService gameService;
 
     //registrar que jugador conquisto
     //esta limitado al turno actual  porque lo limpio en nextplayer
@@ -638,6 +642,51 @@ public class GameStateServiceImpl implements GameStateService {
                 return false; // No se puede cambiar desde FINISHED
             default:
                 return false;
+        }
+    }
+
+    @Override
+    public String executeGameAction(Long gameId, String action) {
+        Game game = gameService.findById(gameId);
+
+        if (!canPerformAction(game, action)) {
+            throw new IllegalStateException("Action '" + action + "' not allowed in current phase");
+        }
+
+        switch (action.toLowerCase()) {
+            case "next_phase":
+                advancePhase(game);
+                break;
+            case "next_turn":
+                nextTurn(game);
+                break;
+            case "skip_attack":
+                changeTurnPhase(game, TurnPhase.FORTIFY);
+                break;
+            case "skip_fortify":
+                changeTurnPhase(game, TurnPhase.END_TURN);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown action: " + action);
+        }
+
+        gameService.save(game);
+        return "Action performed: " + action;
+    }
+
+    private void advancePhase(Game game) {
+        switch (game.getCurrentPhase()) {
+            case REINFORCEMENT:
+                changeTurnPhase(game, TurnPhase.ATTACK);
+                break;
+            case ATTACK:
+                changeTurnPhase(game, TurnPhase.FORTIFY);
+                break;
+            case FORTIFY:
+                changeTurnPhase(game, TurnPhase.END_TURN);
+                break;
+            default:
+                break;
         }
     }
 }

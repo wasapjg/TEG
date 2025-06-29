@@ -16,6 +16,12 @@ import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import ar.edu.utn.frc.tup.piii.service.impl.InitialPlacementServiceImpl;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameTerritoryService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -28,6 +34,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/games/{gameCode}/initial-placement")
+@Tag(name = "Initial Placement", description = "Gestión de la colocación inicial de ejércitos al comenzar una partida")
 public class InitialPlacementController {
 
     @Autowired
@@ -51,6 +58,33 @@ public class InitialPlacementController {
      * @return Estado actualizado del juego
      */
     @PostMapping("/place-armies")
+    @Operation(
+            summary = "Colocar ejércitos iniciales",
+            description = "Permite a un jugador colocar sus ejércitos iniciales en los territorios asignados durante la fase de setup"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Ejércitos colocados exitosamente",
+                    content = @Content(schema = @Schema(implementation = GameResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Colocación inválida: ejércitos insuficientes, territorios no pertenecen al jugador, o fase incorrecta"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida o jugador no encontrado"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "No es el turno del jugador para colocar ejércitos"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Error interno del servidor"
+            )
+    })
     public ResponseEntity<GameResponseDto> placeInitialArmies(
             @PathVariable String gameCode,
             @Valid @RequestBody InitialArmyPlacementDto dto) {
@@ -92,6 +126,25 @@ public class InitialPlacementController {
      * @return Estado de la colocación inicial
      */
     @GetMapping("/status")
+    @Operation(
+            summary = "Obtener estado de colocación inicial",
+            description = "Devuelve el estado actual de la fase de colocación inicial: jugador actual, ejércitos pendientes, fase, etc."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Estado de colocación inicial obtenido",
+                    content = @Content(schema = @Schema(implementation = InitialPlacementServiceImpl.InitialPlacementStatus.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida no encontrada"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Error interno del servidor"
+            )
+    })
     public ResponseEntity<InitialPlacementServiceImpl.InitialPlacementStatus> getPlacementStatus(
             @PathVariable String gameCode) {
 
@@ -118,6 +171,25 @@ public class InitialPlacementController {
      * @return Estado específico del jugador
      */
     @GetMapping("/player/{playerId}")
+    @Operation(
+            summary = "Obtener estado del jugador en colocación inicial",
+            description = "Devuelve información específica de un jugador durante la fase de colocación inicial"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Estado del jugador obtenido",
+                    content = @Content(schema = @Schema(implementation = InitialPlacementServiceImpl.PlayerInitialStatus.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Jugador o partida no encontrada"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Error interno del servidor"
+            )
+    })
     public ResponseEntity<InitialPlacementServiceImpl.PlayerInitialStatus> getPlayerStatus(
             @PathVariable String gameCode,
             @PathVariable Long playerId) {
@@ -145,6 +217,25 @@ public class InitialPlacementController {
      * @return Lista de territorios que posee el jugador
      */
     @GetMapping("/player/{playerId}/territories")
+    @Operation(
+            summary = "Obtener territorios del jugador",
+            description = "Lista todos los territorios que posee un jugador específico durante la colocación inicial, incluyendo ejércitos por colocar"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Territorios del jugador obtenidos",
+                    content = @Content(schema = @Schema(implementation = PlayerTerritoriesDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Jugador o partida no encontrada"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Error interno del servidor"
+            )
+    })
     public ResponseEntity<PlayerTerritoriesDto> getPlayerTerritories(
             @PathVariable String gameCode,
             @PathVariable Long playerId) {
@@ -190,6 +281,25 @@ public class InitialPlacementController {
      * @return Resumen completo del estado inicial
      */
     @GetMapping("/summary")
+    @Operation(
+            summary = "Obtener resumen completo de colocación inicial",
+            description = "Devuelve un resumen completo del estado de la colocación inicial incluyendo todos los jugadores, territorios y progreso"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Resumen completo obtenido",
+                    content = @Content(schema = @Schema(implementation = InitialPlacementSummaryDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida no encontrada"
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Error interno del servidor"
+            )
+    })
     public ResponseEntity<InitialPlacementSummaryDto> getInitialPlacementSummary(
             @PathVariable String gameCode) {
 

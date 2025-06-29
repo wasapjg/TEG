@@ -59,11 +59,6 @@ public class CardServiceImpl implements CardService {
     private static final int MUST_TRADE_CARDS_THRESHOLD = 5;
     private static final int CARDS_REQUIRED_FOR_TRADE = 3;
 
-    // Tabla de valores de intercambio TEG (crece con cada intercambio)
-    private static final int[] TRADE_VALUES = {4, 6, 8, 10, 12, 15, 20, 25, 30, 35, 40, 45, 50};
-
-    // ========== CRUD BÁSICO ==========
-
     @Override
     public Card save(Card card) {
         try {
@@ -125,8 +120,6 @@ public class CardServiceImpl implements CardService {
         }
         cardRepository.deleteById(id);
     }
-
-    // ========== GESTIÓN DE CARTAS DEL JUGADOR ==========
 
     @Override
     public List<CardResponseDto> getPlayerCards(Long playerId) {
@@ -208,8 +201,6 @@ public class CardServiceImpl implements CardService {
         cardRepository.save(cardEntity);
     }
 
-    // ========== INTERCAMBIO DE CARTAS (TEG) ==========
-
     @Override
     public int tradeCards(CardTradeDto tradeDto) {
         // Validar que el jugador existe
@@ -234,8 +225,12 @@ public class CardServiceImpl implements CardService {
             throw new BadRequestException("Invalid card combination for trade");
         }
 
-        // Calcular el valor del intercambio
-        int tradeValue = calculateTradeValue(cardsToTrade, getPlayerTradeCount(tradeDto.getPlayerId()));
+        // INCREMENTAR EL CONTADOR DE TRADES
+        playerEntity.setTradeCount(playerEntity.getTradeCount() + 1);
+        playerRepository.save(playerEntity);
+
+        // CALCULAR EL VALOR USANDO LA NUEVA LÓGICA
+        int tradeValue = calculateTradeValue(playerEntity.getTradeCount());
 
         // Devolver las cartas al mazo
         returnCardsToDeck(cardsToTrade);
@@ -253,14 +248,12 @@ public class CardServiceImpl implements CardService {
     }
 
     @Override
-    public int calculateTradeValue(List<Card> cards, int tradeCount) {
-        if (!canTradeCards(cards)) {
-            return 0;
+    public int calculateTradeValue(int tradeNumber) {
+        if (tradeNumber <= 3) {
+            return tradeNumber * 3 + 1;
+        } else {
+            return (tradeNumber - 1) * 5;
         }
-
-        // Usar tabla de valores TEG
-        int index = Math.min(tradeCount, TRADE_VALUES.length - 1);
-        return TRADE_VALUES[index];
     }
 
     @Override
@@ -401,7 +394,17 @@ public class CardServiceImpl implements CardService {
                 .toList();
     }
 
-    // ========== LÓGICA ESPECÍFICA TEG ==========
+    @Override
+    public boolean canPlayerTrade(Long playerId) {
+        List<CardResponseDto> playerCards = getPlayerCards(playerId);
+        return playerCards.size() >= 3;
+    }
+
+    @Override
+    public boolean mustPlayerTrade(Long playerId) {
+        List<CardResponseDto> playerCards = getPlayerCards(playerId);
+        return playerCards.size() >= getMaxCardsAllowed();
+    }
 
     /**
      * Otorga una carta al jugador si ha conquistado al menos un territorio en su turno
@@ -414,9 +417,6 @@ public class CardServiceImpl implements CardService {
 
     }
 
-    /**
-     * Recicla las cartas usadas de vuelta al mazo
-     */
     private void recycleDeck(Game game) {
         GameEntity gameEntity = gameMapper.toEntity(game);
         List<CardEntity> usedCards = cardRepository.findByGameAndOwnerIsNull(gameEntity);
@@ -429,9 +429,6 @@ public class CardServiceImpl implements CardService {
         cardRepository.saveAll(usedCards);
     }
 
-    /**
-     * Devuelve las cartas al mazo después de un intercambio
-     */
     private void returnCardsToDeck(List<Card> cards) {
         List<CardEntity> cardEntities = cards.stream()
                 .map(card -> cardRepository.findById(card.getId())
@@ -450,10 +447,49 @@ public class CardServiceImpl implements CardService {
      * Obtiene el número de intercambios realizados por el jugador
      * (Esto requeriría una tabla adicional para tracking, por ahora retorna 0)
 */
-    private int getPlayerTradeCount(Long playerId) {
-        // TODO: Implementar tracking de intercambios por jugador en una tabla separada
-        // Por ahora retorna 0 para usar el primer valor de la tabla
-        return 0;
+    @Override
+    public int getPlayerTradeCount(Long playerId) {
+        return playerRepository.findById(playerId)
+                .map(PlayerEntity::getTradeCount)
+                .orElse(0);
+    }
+
+    @Override
+    public int getNextTradeValue(Long playerId) {
+        int currentTradeCount = getPlayerTradeCount(playerId);
+        return calculateTradeValue(currentTradeCount + 1);
+    }
+
+    /**
+     * Verifica si el jugador puede recibir el premio de +2 ejércitos
+     * por tener un país y su carta correspondiente.
+     */
+    public boolean canClaimTerritoryBonus(Long gameId, Long playerId, String countryName) {
+        // Buscar el país por nombre
+        // Necesitarás un método en GameTerritoryService para esto
+        Territory territory = gameTerritoryService.getTerritoryByGameAndCountryName(gameId, countryName);
+        if (territory == null || !playerId.equals(territory.getOwnerId())) {
+            return false;
+        }
+
+        // Verificar que el jugador tiene la carta de ese país
+        List<CardResponseDto> playerCards = getPlayerCards(playerId);
+        return playerCards.stream()
+                .anyMatch(card -> countryName.equals(card.getCountryName()));
+    }
+
+    /**
+     * Aplica el premio de +2 ejércitos por coincidencia país-carta.
+     */
+    @Transactional
+    public void claimTerritoryBonus(Long gameId, Long playerId, String countryName) {
+        if (!canClaimTerritoryBonus(gameId, playerId, countryName)) {
+            throw new BadRequestException("No eligible for territory bonus");
+        }
+
+        // Buscar el territorio por nombre y agregar ejércitos
+        Territory territory = gameTerritoryService.getTerritoryByGameAndCountryName(gameId, countryName);
+        gameTerritoryService.addArmiesToTerritory(gameId, territory.getId(), 2);
     }
 
 }

@@ -2,13 +2,21 @@ package ar.edu.utn.frc.tup.piii.service.impl;
 
 import ar.edu.utn.frc.tup.piii.FactoryBots.BotStrategyExecutor;
 import ar.edu.utn.frc.tup.piii.FactoryBots.BotStrategyFactory;
+import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
 import ar.edu.utn.frc.tup.piii.entities.BotProfileEntity;
 import ar.edu.utn.frc.tup.piii.entities.CountryEntity;
 import ar.edu.utn.frc.tup.piii.entities.GameEntity;
 import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
+import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
+import ar.edu.utn.frc.tup.piii.mappers.PlayerMapper;
+import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.model.enums.BotLevel;
 import ar.edu.utn.frc.tup.piii.repository.BotProfileRepository;
 import ar.edu.utn.frc.tup.piii.service.interfaces.BotService;
+import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
+import ar.edu.utn.frc.tup.piii.service.interfaces.GameStateService;
+import ar.edu.utn.frc.tup.piii.service.interfaces.PlayerService;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,10 +44,20 @@ public class BotServiceImpl implements BotService {
         this.botProfileRepository = botProfileRepository;
     }
 
-    // ===============================
-    // EJECUCIÓN DE TURNOS DE BOTS
-    // ===============================
+    @Autowired
+    private PlayerService playerService;
 
+    @Autowired
+    private GameService gameService;
+
+    @Autowired
+    private GameStateService gameStateService;
+
+    @Autowired
+    private GameMapper gameMapper;
+
+    @Autowired
+    private PlayerMapper playerMapper;
     /**
      * Ejecuta el turno completo de un bot: Refuerzo -> Ataque -> Fortificación.
      * Los bots siempre ejecutan todas las fases automáticamente.
@@ -236,5 +254,33 @@ public class BotServiceImpl implements BotService {
                 botPlayer.getBotProfile().getBotName(),
                 botPlayer.getBotProfile().getLevel(),
                 botPlayer.getBotProfile().getStrategy());
+    }
+
+    @Override
+    public GameResponseDto executeBotTurnComplete(String gameCode, Long botId) {
+        Optional<Player> botPlayerOpt = playerService.findById(botId);
+        if (botPlayerOpt.isEmpty() || !botPlayerOpt.get().getIsBot()) {
+            throw new IllegalArgumentException("Bot not found or not a bot with ID: " + botId);
+        }
+
+        Player botPlayer = botPlayerOpt.get();
+        Game game = gameService.findByGameCode(gameCode);
+
+        if (!gameStateService.isPlayerTurn(game, botId)) {
+            throw new IllegalStateException("It's not bot's turn. Bot: " + botId + ", Current player: " + game.getCurrentPlayerIndex());
+        }
+
+        if (!gameStateService.canPerformAction(game, "bot_turn")) {
+            throw new IllegalStateException("Game not in valid state for bot turn execution: " + game.getState());
+        }
+
+        PlayerEntity botEntity = playerMapper.toEntity(botPlayer);
+        GameEntity gameEntity = gameMapper.toEntity(game);
+
+        executeBotTurn(botEntity, gameEntity);
+        gameStateService.nextTurn(game);
+        Game savedGame = gameService.save(game);
+
+        return gameMapper.toResponseDto(savedGame);
     }
 }

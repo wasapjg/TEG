@@ -140,4 +140,6 @@ public interface GameStateService {
      * @return true if the transition is valid, false otherwise
      */
     boolean isValidStateTransition(GameState currentState, GameState targetState);
+
+    String executeGameAction(Long gameId, String action);
 }

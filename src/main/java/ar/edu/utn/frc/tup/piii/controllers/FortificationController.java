@@ -13,6 +13,10 @@ import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameStateService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameTerritoryService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +58,25 @@ public class FortificationController {
     @PostMapping("/fortify")
     @Operation(summary = "Ejecutar fortificación",
             description = "Mueve ejércitos entre dos territorios propios conectados")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Fortificación ejecutada exitosamente",
+                    content = @Content(schema = @Schema(implementation = FortificationResponseDto.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Fortificación inválida: territorios no conectados, ejércitos insuficientes, o dejaría territorio sin defensa"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "No es la fase de fortificación o no es el turno del jugador"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Partida o territorios no encontrados"
+            )
+    })
     public ResponseEntity<FortificationResponseDto> performFortification(
             @PathVariable String gameCode,
             @Valid @RequestBody FortifyDto fortifyDto) {
@@ -150,6 +173,21 @@ public class FortificationController {
     @GetMapping("/fortifiable-territories/{playerId}")
     @Operation(summary = "Obtener territorios fortificables",
             description = "Lista los territorios del jugador que pueden ser origen de fortificación")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Lista de territorios fortificables obtenida",
+                    content = @Content(schema = @Schema(implementation = Territory.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Estado de juego no permite fortificación"
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Jugador o partida no encontrada"
+            )
+    })
     public ResponseEntity<List<Territory>> getFortifiableTerritories(
             @PathVariable String gameCode,
             @PathVariable Long playerId) {
@@ -186,6 +224,21 @@ public class FortificationController {
     @GetMapping("/fortification-targets/{territoryId}/{playerId}")
     @Operation(summary = "Obtener objetivos de fortificación",
             description = "Lista los territorios que pueden recibir ejércitos. En HOSTILITY_ONLY solo adyacentes, en NORMAL_PLAY conectados por cadena.")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Lista de objetivos de fortificación obtenida",
+                    content = @Content(schema = @Schema(implementation = Territory.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Territorio no puede fortificar o estado de juego inválido"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Territorio no pertenece al jugador"
+            )
+    })
     public ResponseEntity<List<Territory>> getFortificationTargets(
             @PathVariable String gameCode,
             @PathVariable Long territoryId,
@@ -221,6 +274,13 @@ public class FortificationController {
     @GetMapping("/can-fortify/{playerId}")
     @Operation(summary = "Verificar si puede fortificar",
             description = "Verifica si un jugador puede realizar fortificaciones en el estado actual")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Resultado de la verificación",
+                    content = @Content(schema = @Schema(implementation = Boolean.class))
+            )
+    })
     public ResponseEntity<Boolean> canPlayerFortify(
             @PathVariable String gameCode,
             @PathVariable Long playerId) {
@@ -261,6 +321,21 @@ public class FortificationController {
     @GetMapping("/max-movable-armies/{territoryId}")
     @Operation(summary = "Obtener ejércitos máximos movibles",
             description = "Calcula cuántos ejércitos se pueden mover desde un territorio")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Número máximo de ejércitos movibles calculado",
+                    content = @Content(schema = @Schema(implementation = Integer.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Territorio no encontrado"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "ID de territorio inválido"
+            )
+    })
     public ResponseEntity<Integer> getMaxMovableArmies(
             @PathVariable String gameCode,
             @PathVariable Long territoryId) {
@@ -292,6 +367,21 @@ public class FortificationController {
     @GetMapping("/check-connection/{fromTerritoryId}/{toTerritoryId}/{playerId}")
     @Operation(summary = "Verificar conexión entre territorios",
             description = "Verifica si dos territorios están conectados por territorios del jugador")
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Resultado de la verificación de conexión",
+                    content = @Content(schema = @Schema(implementation = Boolean.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Territorios no encontrados"
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "Territorios no pertenecen al jugador"
+            )
+    })
     public ResponseEntity<Boolean> checkTerritoryConnection(
             @PathVariable String gameCode,
             @PathVariable Long fromTerritoryId,

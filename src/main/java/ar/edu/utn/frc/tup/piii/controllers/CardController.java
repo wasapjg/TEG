@@ -9,6 +9,13 @@ import ar.edu.utn.frc.tup.piii.service.impl.CardServiceImpl;
 import ar.edu.utn.frc.tup.piii.service.interfaces.CardService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.PlayerService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -22,89 +29,152 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-/**
- * Controlador REST para la gestión de cartas en el juego TEG
- * Maneja todas las operaciones relacionadas con cartas: obtener, intercambiar, otorgar, etc.
- */
 @RestController
 @RequestMapping("/api/cards")
 @Validated
 @CrossOrigin(origins = "*")
+@Tag(name = "Cards", description = "Gestión de cartas del juego TEG")
 public class CardController {
 
     @Autowired
     private CardService cardService;
-
-    @Autowired
-    private CardServiceImpl cardServiceImpl;
-
-    @Autowired
-    private GameService gameService;
-
-    @Autowired
-    private PlayerService playerService;
-
-    // ========== ENDPOINTS PARA OBTENER CARTAS ==========
 
 
     /**
      * Obtiene todas las cartas de un jugador específico
      */
     @GetMapping("/player/{playerId}")
-    public ResponseEntity<List<CardResponseDto>> getPlayerCards(@PathVariable Long playerId) {
+    @Operation(summary = "Obtener cartas del jugador",
+            description = "Devuelve todas las cartas que posee un jugador específico")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Lista de cartas obtenida exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = CardResponseDto.class)))),
+            @ApiResponse(responseCode = "404",
+                    description = "Jugador no encontrado",
+                    content = @Content),
+            @ApiResponse(responseCode = "400",
+                    description = "ID de jugador inválido",
+                    content = @Content)
+    })
+    public ResponseEntity<List<CardResponseDto>> getPlayerCards(
+            @PathVariable Long playerId) {
         List<CardResponseDto> playerCards = cardService.getPlayerCards(playerId);
         return ResponseEntity.ok(playerCards);
     }
 
-    /**
-     * Realiza un intercambio de cartas
-     */
     @PostMapping("/trade")
-    public ResponseEntity<Integer> tradeCards(@Valid @RequestBody CardTradeDto tradeDto) {
-        int tradeValue = cardService.tradeCards(tradeDto);
-        return ResponseEntity.ok(tradeValue);
+    @Operation(summary = "Intercambiar cartas por ejércitos",
+            description = "Permite intercambiar exactamente 3 cartas por ejércitos según las reglas del TEG. " +
+                    "El valor de ejércitos incrementa con cada intercambio: 1°=4, 2°=7, 3°=10, 4°=15, etc.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Intercambio realizado exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = TradeResultDto.class))),
+            @ApiResponse(responseCode = "400",
+                    description = "Datos de intercambio inválidos (cartas no válidas, no pertenecen al jugador, etc.)",
+                    content = @Content),
+            @ApiResponse(responseCode = "404",
+                    description = "Jugador o cartas no encontrados",
+                    content = @Content)
+    })
+    public ResponseEntity<TradeResultDto> tradeCards(
+            @Valid @RequestBody CardTradeDto tradeDto) {
+        int armiesReceived = cardService.tradeCards(tradeDto);
+        int newTradeCount = cardService.getPlayerTradeCount(tradeDto.getPlayerId());
+        int nextTradeValue = cardService.getNextTradeValue(tradeDto.getPlayerId());
+
+        TradeResultDto result = TradeResultDto.builder()
+                .armiesReceived(armiesReceived)
+                .completedTrades(newTradeCount)
+                .nextTradeValue(nextTradeValue)
+                .build();
+
+        return ResponseEntity.ok(result);
     }
 
-    /**
-     * Verifica si un jugador puede intercambiar cartas
-     */
     @GetMapping("/player/{playerId}/can-trade")
-    public ResponseEntity<Boolean> canPlayerTrade(@PathVariable Long playerId) {
+    @Operation(summary = "Verificar si puede intercambiar",
+            description = "Verifica si el jugador tiene al menos 3 cartas para poder realizar un intercambio")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Verificación completada",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Boolean.class,
+                                    description = "true si puede intercambiar, false si no"))),
+            @ApiResponse(responseCode = "404",
+                    description = "Jugador no encontrado",
+                    content = @Content),
+            @ApiResponse(responseCode = "400",
+                    description = "ID de jugador inválido",
+                    content = @Content)
+    })
+    public ResponseEntity<Boolean> canPlayerTrade(
+            @PathVariable Long playerId) {
         List<CardResponseDto> playerCards = cardService.getPlayerCards(playerId);
-        // Convertir DTOs a Models para validación (esto se podría optimizar)
-        // Por ahora asumimos que el service tiene la validación necesaria
         boolean canTrade = playerCards.size() >= 3;
         return ResponseEntity.ok(canTrade);
     }
 
-    /**
-     * Verifica si un jugador debe intercambiar cartas obligatoriamente
-     */
-    @GetMapping("/player/{playerId}/must-trade")
-    public ResponseEntity<Boolean> mustPlayerTrade(@PathVariable Long playerId) {
-        // Necesitamos crear un Player object para pasar al service
-        // Esto se podría mejorar con un método específico en el service
-        List<CardResponseDto> playerCards = cardService.getPlayerCards(playerId);
-        boolean mustTrade = playerCards.size() >= cardService.getMaxCardsAllowed();
-        return ResponseEntity.ok(mustTrade);
+    @PostMapping("/territory-bonus")
+    @Operation(summary = "Reclamar premio país-carta",
+            description = "Otorga +2 ejércitos al tener un país y su carta correspondiente")
+    public ResponseEntity<TerritoryBonusResultDto> claimTerritoryBonus(
+            @Valid @RequestBody TerritoryBonusDto bonusDto) {
+
+        cardService.claimTerritoryBonus(bonusDto.getGameId(), bonusDto.getPlayerId(), bonusDto.getCountryName());
+
+        TerritoryBonusResultDto result = TerritoryBonusResultDto.builder()
+                .success(true)
+                .armiesAdded(2)
+                .message("Bonus applied: +2 armies added to territory")
+                .build();
+
+        return ResponseEntity.ok(result);
     }
 
-    /**
-     * Obtiene el número máximo de cartas permitidas
-     */
-    @GetMapping("/max-cards-allowed")
-    public ResponseEntity<Integer> getMaxCardsAllowed() {
-        int maxCards = cardService.getMaxCardsAllowed();
-        return ResponseEntity.ok(maxCards);
+    // DTOs para el endpoint
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class TerritoryBonusDto {
+        @NotNull private Long gameId;
+        @NotNull private Long playerId;
+        @NotNull private String countryName;
     }
 
-    /**
-     * Obtiene el conteo de cartas de un jugador
-     */
-    @GetMapping("/player/{playerId}/count")
-    public ResponseEntity<Integer> getPlayerCardCount(@PathVariable Long playerId) {
-        List<CardResponseDto> playerCards = cardService.getPlayerCards(playerId);
-        return ResponseEntity.ok(playerCards.size());
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class TerritoryBonusResultDto {
+        private Boolean success;
+        private Integer armiesAdded;
+        private String message;
     }
 
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    @Schema(description = "Resultado del intercambio de cartas")
+    public static class TradeResultDto {
+        @Schema(description = "Cantidad de ejércitos recibidos en este intercambio",
+                example = "4",
+                minimum = "4")
+        private Integer armiesReceived;
+
+        @Schema(description = "Número total de intercambios realizados por el jugador",
+                example = "1",
+                minimum = "1")
+        private Integer completedTrades;
+
+        @Schema(description = "Cantidad de ejércitos que recibirá en el próximo intercambio",
+                example = "7",
+                minimum = "4")
+        private Integer nextTradeValue;
+    }
 }

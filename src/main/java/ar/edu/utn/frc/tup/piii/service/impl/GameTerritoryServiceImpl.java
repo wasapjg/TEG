@@ -6,7 +6,9 @@ import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
 import ar.edu.utn.frc.tup.piii.entities.CountryEntity;
 import ar.edu.utn.frc.tup.piii.exceptions.GameNotFoundException;
 import ar.edu.utn.frc.tup.piii.exceptions.PlayerNotFoundException;
+import ar.edu.utn.frc.tup.piii.mappers.PlayerMapper;
 import ar.edu.utn.frc.tup.piii.mappers.TerritoryMapper;
+import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.model.Territory;
 import ar.edu.utn.frc.tup.piii.repository.*;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameTerritoryService;
@@ -39,8 +41,9 @@ public class GameTerritoryServiceImpl implements GameTerritoryService {
         @Autowired
         private TerritoryMapper territoryMapper;
 
-    @Autowired
-    private GameStateServiceImpl GameStateServiceImpl;
+        @Autowired
+        private PlayerMapper playerMapper;
+
 
 
     @Override
@@ -282,7 +285,21 @@ public class GameTerritoryServiceImpl implements GameTerritoryService {
                                 .collect(Collectors.toList());
         }
 
-        //Metodos de conversion
+    @Override
+    public Territory getTerritoryByGameAndCountryName(Long gameId, String countryName) {
+        GameEntity game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new GameNotFoundException("Game not found with id: " + gameId));
+
+        CountryEntity country = countryRepository.findByName(countryName)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Country not found with name: " + countryName));
+
+        return gameTerritoryRepository.findByGameAndCountry(game, country)
+                .map(this::convertToTerritory)
+                .orElse(null);
+    }
+
+    //Metodos de conversion
 
         /**
          * Convierte un CountryEntity a Territory básico (sin propietario).
@@ -303,25 +320,23 @@ public class GameTerritoryServiceImpl implements GameTerritoryService {
          * Convierte un GameTerritoryEntity a Territory completo.
          */
         private Territory convertToTerritory(GameTerritoryEntity entity) {
-                String ownerName = null;
-                if (entity.getOwner() != null) {
-                        if (entity.getOwner().getUser() != null) {
-                                ownerName = entity.getOwner().getUser().getUsername();
-                        } else if (entity.getOwner().getBotProfile() != null) {
-                                ownerName = entity.getOwner().getBotProfile().getBotName();
-                        }
-                }
+            String ownerName = null;
+            if (entity.getOwner() != null) {
+                // CAMBIO: Usar PlayerMapper para obtener el displayName correcto
+                Player ownerPlayer = playerMapper.toModel(entity.getOwner());
+                ownerName = ownerPlayer.getDisplayName();
+            }
 
-                return Territory.builder()
-                                .id(entity.getCountry().getId())
-                                .name(entity.getCountry().getName())
-                                .continentName(entity.getCountry().getContinent().getName())
-                                .ownerId(entity.getOwner() != null ? entity.getOwner().getId() : null)
-                                .ownerName(ownerName)
-                                .armies(entity.getArmies())
-                                .neighborIds(entity.getCountry().getNeighbors().stream()
-                                                .map(CountryEntity::getId)
-                                                .collect(Collectors.toSet()))
-                                .build();
+            return Territory.builder()
+                    .id(entity.getCountry().getId())
+                    .name(entity.getCountry().getName())
+                    .continentName(entity.getCountry().getContinent().getName())
+                    .ownerId(entity.getOwner() != null ? entity.getOwner().getId() : null)
+                    .ownerName(ownerName)  // ← Ahora incluye el # y número para bots
+                    .armies(entity.getArmies())
+                    .neighborIds(entity.getCountry().getNeighbors().stream()
+                            .map(CountryEntity::getId)
+                            .collect(Collectors.toSet()))
+                    .build();
         }
 }

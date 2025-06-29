@@ -8,6 +8,7 @@ import ar.edu.utn.frc.tup.piii.exceptions.InvalidGameStateException;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.model.Territory;
 import ar.edu.utn.frc.tup.piii.service.interfaces.CombatService;
+import ar.edu.utn.frc.tup.piii.service.interfaces.GameStateService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameTerritoryService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,9 @@ public class CombatServiceImpl implements CombatService {
 
     @Autowired
     private GameService gameService;
+
+    @Autowired
+    private GameStateService gameStateService;
 
     private final Random random = new Random();
 
@@ -69,19 +73,6 @@ public class CombatServiceImpl implements CombatService {
                 combatResult, territoryConquered);
     }
 
-
-
-    private void validateGameStateForCombat(Game game) {
-        switch (game.getState()) {
-            case HOSTILITY_ONLY:
-            case NORMAL_PLAY:
-                // Estados validos para combate: solo puedo atacar un pais si estoy en esas etapas
-                break;
-            default:
-                throw new InvalidGameStateException(
-                        "Combat not allowed in current game state: " + game.getState());
-        }
-    }
 
     private void validateAttack(Game game, AttackDto attackDto, Territory attacker, Territory defender) {
         // los territorios exist?
@@ -277,5 +268,38 @@ public class CombatServiceImpl implements CombatService {
         return neighbors.stream()
                 .filter(neighbor -> !playerId.equals(neighbor.getOwnerId())) // No es suyo
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public CombatResultDto performCombatWithValidation(String gameCode, AttackDto attackDto) {
+        Game game = gameService.findByGameCode(gameCode);
+
+        validateGameStateForCombat(game);
+        validatePlayerTurn(game, attackDto.getPlayerId());
+
+        return performCombat(gameCode, attackDto);
+    }
+
+    private void validateGameStateForCombat(Game game) {
+        if (!isGameStateValidForCombat(game)) {
+            throw new IllegalStateException("Combat not allowed in current game state: " + game.getState());
+        }
+    }
+
+    private boolean isGameStateValidForCombat(Game game) {
+        return switch (game.getState()) {
+            case HOSTILITY_ONLY, NORMAL_PLAY -> true;
+            default -> false;
+        };
+    }
+
+    private void validatePlayerTurn(Game game, Long playerId) {
+        if (!gameStateService.isPlayerTurn(game, playerId)) {
+            throw new IllegalStateException("It's not player's turn to attack");
+        }
+
+        if (!gameStateService.canPerformAction(game, "attack")) {
+            throw new IllegalStateException("Cannot attack in current turn phase: " + game.getCurrentPhase());
+        }
     }
 }

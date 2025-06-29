@@ -37,6 +37,9 @@ public class Player {
     @Builder.Default
     private List<Long> territoryIds = new ArrayList<>();
 
+    @Builder.Default
+    private Integer tradeCount = 0;
+
     // Business logic methods
     public boolean isEliminated() {
         return status == PlayerStatus.ELIMINATED;

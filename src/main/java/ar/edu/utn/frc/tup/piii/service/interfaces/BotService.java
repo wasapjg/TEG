@@ -1,5 +1,6 @@
 package ar.edu.utn.frc.tup.piii.service.interfaces;
 
+import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
 import ar.edu.utn.frc.tup.piii.entities.BotProfileEntity;
 import ar.edu.utn.frc.tup.piii.entities.CountryEntity;
 import ar.edu.utn.frc.tup.piii.entities.GameEntity;
@@ -15,10 +16,6 @@ import java.util.Optional;
  */
 public interface BotService {
 
-    // ===============================
-    // EJECUCIÓN DE TURNOS
-    // ===============================
-
     /**
      * Ejecuta el turno completo de un bot (todas las fases automáticamente).
      *
@@ -26,10 +23,6 @@ public interface BotService {
      * @param game El juego actual
      */
     void executeBotTurn(PlayerEntity botPlayer, GameEntity game);
-
-    // ===============================
-    // ANÁLISIS Y ESTRATEGIA
-    // ===============================
 
     /**
      * Evalúa la probabilidad de éxito de un ataque.
@@ -77,10 +70,6 @@ public interface BotService {
      */
     boolean shouldBotFortify(PlayerEntity botPlayer, GameEntity game);
 
-    // ===============================
-    // CRUD DE BOT PROFILES
-    // ===============================
-
     /**
      * Guarda un perfil de bot.
      *
@@ -119,10 +108,6 @@ public interface BotService {
      */
     void deleteById(Long id);
 
-    // ===============================
-    // UTILIDADES
-    // ===============================
-
     /**
      * Valida que un player sea efectivamente un bot.
      *
@@ -138,4 +123,6 @@ public interface BotService {
      * @return Nombre descriptivo del bot
      */
     String getBotDisplayName(PlayerEntity botPlayer);
+
+    GameResponseDto executeBotTurnComplete(String gameCode, Long botId);
 }

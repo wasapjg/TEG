@@ -23,10 +23,9 @@ public class ColorManager {
 
         List<PlayerColor> availableColors = Arrays.stream(PlayerColor.values())
                 .filter(color -> !usedColors.contains(color))
-                .collect(Collectors.toList());
+                .toList();
 
-        return availableColors.isEmpty() ?
-                PlayerColor.values()[RANDOM.nextInt(PlayerColor.values().length)] :
-                availableColors.get(RANDOM.nextInt(availableColors.size()));
+        PlayerColor selectedColor = availableColors.get(RANDOM.nextInt(availableColors.size()));
+        return selectedColor;
     }
 }
