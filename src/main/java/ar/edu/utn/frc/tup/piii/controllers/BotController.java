@@ -20,9 +20,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.web.mappings.MappingsEndpoint;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,6 +50,9 @@ public class BotController {
     private final GameMapper gameMapper;
     private final PlayerMapper playerMapper;
 
+    private static final Logger logger = LoggerFactory.getLogger(BotController.class);
+
+
     @Autowired
     public BotController(BotService botService, GameService gameService, PlayerService playerService,
                          GameStateService gameStateService, GameMapper gameMapper, PlayerMapper playerMapper
@@ -56,6 +63,26 @@ public class BotController {
         this.gameStateService = gameStateService;
         this.gameMapper = gameMapper;
         this.playerMapper = playerMapper;
+    }
+
+    /**
+     * ENDPOINT DE PRUEBA - Para verificar que el controller funciona
+     */
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        System.out.println("🟢 TEST ENDPOINT FUNCIONANDO");
+        return ResponseEntity.ok("Bot Controller funcionando correctamente");
+    }
+
+    /**
+     * ENDPOINT DE PRUEBA CON PARÁMETROS
+     */
+    @GetMapping("/test/{gameCode}/{botId}")
+    public ResponseEntity<String> testWithParams(
+            @PathVariable String gameCode,
+            @PathVariable Long botId) {
+        System.out.println("🟢 TEST CON PARÁMETROS - gameCode: " + gameCode + ", botId: " + botId);
+        return ResponseEntity.ok("Parámetros recibidos: " + gameCode + ", " + botId);
     }
 
     /**
@@ -88,18 +115,48 @@ public class BotController {
                     description = "Bot no puede ejecutar turno en el estado actual del juego"
             )
     })
-    public ResponseEntity<GameResponseDto> executeBotTurn(
+    public ResponseEntity<?> executeBotTurn(
             @PathVariable String gameCode,
-            @PathVariable Long botId) {
+            @PathVariable Long botId,
+            HttpServletRequest request) {
+        // LOGS MÚLTIPLES PARA ASEGURAR VISIBILIDAD
+        System.out.println("=".repeat(80));
+        System.out.println("🚨 EJECUTANDO TURNO DEL BOT");
+        System.out.println("🎯 GameCode: " + gameCode);
+        System.out.println("🤖 BotId: " + botId);
+        System.out.println("📡 URL: " + request.getRequestURL());
+        System.out.println("🔧 Method: " + request.getMethod());
+        System.out.println("=".repeat(80));
+        // También usar logger
+        log.info("🚨 EJECUTANDO TURNO DEL BOT - gameCode: {}, botId: {}", gameCode, botId);
 
         try {
+            // Validaciones paso a paso con logs
+            System.out.println("1️⃣ Validando parámetros...");
+            if (gameCode == null || gameCode.trim().isEmpty()) {
+                System.out.println("❌ GameCode inválido: " + gameCode);
+                return ResponseEntity.badRequest().body("GameCode inválido");
+            }
+            System.out.println("4️⃣ Llamando al servicio...");
+
             GameResponseDto result = botService.executeBotTurnComplete(gameCode, botId);
+
+            log.info("✅ Turno del bot ejecutado correctamente para botId={} en juego={}", botId, gameCode);
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            System.out.println("❌ IllegalArgumentException: " + e.getMessage());
+            log.warn("❌ IllegalArgumentException en executeBotTurn para botId={}, gameCode={}: {}", botId, gameCode, e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().build();
+            log.warn("❌ IllegalStateException en executeBotTurn para botId={}, gameCode={}: {}", botId, gameCode, e.getMessage());
+            System.out.println("❌EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE IllegalStateException: " + e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }catch (Exception e) {
+            log.error("❌ Error inesperado ejecutando turno del bot - botId={}, gameCode={}", botId, gameCode, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Ocurrió un error inesperado");
         }
+
     }
 
     /**

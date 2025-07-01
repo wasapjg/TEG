@@ -27,7 +27,7 @@ public class PlayerEntity {
     @JoinColumn(name = "user_id")
     private UserEntity user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     @JoinColumn(name = "bot_profile_id")
     private BotProfileEntity botProfile; // null if human
 

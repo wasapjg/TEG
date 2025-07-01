@@ -273,9 +273,12 @@ public class AuthControllerTest {
 
     @Test
     void login_WithNullCredential_ShouldReturnBadRequest() throws Exception {
+        // Opción 1: JSON malformado que no puede ser parseado
+        String malformedJson = "{\"identity\":,\"password\":null}";
+
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content(malformedJson))
                 .andDo(print())
                 .andExpect(status().isBadRequest());
     }

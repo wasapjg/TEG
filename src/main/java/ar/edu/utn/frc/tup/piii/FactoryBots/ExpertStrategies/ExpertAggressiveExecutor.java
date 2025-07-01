@@ -4,17 +4,20 @@ import ar.edu.utn.frc.tup.piii.FactoryBots.BotStrategyExecutor;
 import ar.edu.utn.frc.tup.piii.dtos.game.AttackDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.CombatResultDto;
 import ar.edu.utn.frc.tup.piii.dtos.game.FortifyDto;
+import ar.edu.utn.frc.tup.piii.dtos.game.ReinforcementStatusDto;
 import ar.edu.utn.frc.tup.piii.entities.CountryEntity;
 import ar.edu.utn.frc.tup.piii.entities.GameEntity;
 import ar.edu.utn.frc.tup.piii.entities.ObjectiveEntity;
 import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
+import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
+import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.model.Territory;
 import ar.edu.utn.frc.tup.piii.model.enums.BotLevel;
 import ar.edu.utn.frc.tup.piii.model.enums.BotStrategy;
-import ar.edu.utn.frc.tup.piii.model.enums.ObjectiveType;
-import ar.edu.utn.frc.tup.piii.service.interfaces.CombatService;
-import ar.edu.utn.frc.tup.piii.service.interfaces.FortificationService;
-import ar.edu.utn.frc.tup.piii.service.interfaces.GameTerritoryService;
+import ar.edu.utn.frc.tup.piii.model.enums.GameState;
+import ar.edu.utn.frc.tup.piii.model.enums.TurnPhase;
+import ar.edu.utn.frc.tup.piii.service.interfaces.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -32,74 +35,60 @@ public class ExpertAggressiveExecutor implements BotStrategyExecutor {
     @Autowired
     private FortificationService fortificationService;
 
-    //falta el servicio de refuerzos, se debe implementar
+    @Autowired
+    private ReinforcementService reinforcementService;
 
     @Autowired
     private GameTerritoryService gameTerritoryService;
 
+    @Autowired
+    private GameStateService gameStateService;
+
+    @Autowired
+    private InitialPlacementService initialPlacementService;
+
+    @Autowired
+    private PlayerService playerService;
+
+    @Autowired
+    private IGameEventService gameEventService;
+    @Autowired
+    private GameMapper gameMapper;
+
     private final Random random = new Random();
 
-    // Estructura para representar el grafo de territorios
-    private static class TerritoryNode {
-        Long territoryId;
-        String name;
-        List<Long> neighbors;
-        int armies;
-        Long ownerId;
-        int distance;
-        Long previousNode;
-
-        public TerritoryNode(Territory territory) {
-            this.territoryId = territory.getId();
-            this.name = territory.getName();
-            this.armies = territory.getArmies();
-            this.ownerId = territory.getOwnerId();
-            this.neighbors = new ArrayList<>();
-            this.distance = Integer.MAX_VALUE;
-            this.previousNode = null;
-        }
-    }
-
-    // Estructura para objetivos estratégicos
-    private static class StrategicObjective {
+    // Estructura simplificada para objetivos estratégicos
+    private static class StrategicTarget {
         Long territoryId;
         String name;
         int priority;
-        String type; // "CONTINENT_BONUS", "ENEMY_STRONGHOLD", "BRIDGE_TERRITORY", "MAIN_OBJECTIVE"
-        List<Long> pathFromClosestOwned;
-        int estimatedCost; // Ejércitos necesarios para conquistar
-        boolean isMainObjective; // Indica si es parte del objetivo principal del jugador
+        String type;
 
-        public StrategicObjective(Long territoryId, String name, int priority, String type) {
+        public StrategicTarget(Long territoryId, String name, int priority, String type) {
             this.territoryId = territoryId;
             this.name = name;
             this.priority = priority;
             this.type = type;
-            this.pathFromClosestOwned = new ArrayList<>();
-            this.estimatedCost = 0;
-            this.isMainObjective = false;
         }
     }
 
-    // Estructura para representar el objetivo principal del jugador
-    private static class PlayerMainObjective {
-        String objectiveType; // "OCCUPATION", "DESTRUCTION", "COMMON"
-        String description;
-        List<String> targetData; // Continentes a ocupar, jugador a destruir, etc.
-        int priority;
+    // Estructura para movimientos de fortificación
+    private static class FortificationMove {
+        Long sourceId;
+        String sourceName;
+        Long targetId;
+        String targetName;
+        int armies;
+        String purpose;
 
-        public PlayerMainObjective(ObjectiveEntity objective) {
-            this.objectiveType = objective.getType().name();
-            this.description = objective.getDescription();
-            this.targetData = parseTargetData(objective.getTargetData());
-            this.priority = 100; // Máxima prioridad para el objetivo principal
-        }
-
-        private List<String> parseTargetData(String targetData) {
-            if (targetData == null || targetData.trim().isEmpty()) {
-                return new ArrayList<>();
-            }
-            return Arrays.asList(targetData.split(","));
+        public FortificationMove(Long sourceId, String sourceName, Long targetId, String targetName,
+                                 int armies, String purpose) {
+            this.sourceId = sourceId;
+            this.sourceName = sourceName;
+            this.targetId = targetId;
+            this.targetName = targetName;
+            this.armies = armies;
+            this.purpose = purpose;
         }
     }
 
@@ -117,51 +106,200 @@ public class ExpertAggressiveExecutor implements BotStrategyExecutor {
     public void executeTurn(PlayerEntity botPlayer, GameEntity game) {
         log.info("Ejecutando turno EXPERT-AGGRESSIVE para bot: {}", botPlayer.getBotProfile().getBotName());
 
-        // Obtener el objetivo principal del jugador
-        PlayerMainObjective mainObjective = getPlayerMainObjective(botPlayer);
-        log.info("Objetivo principal del bot: {} - {}", mainObjective.objectiveType, mainObjective.description);
+        // Verificar el estado del juego y ejecutar la acción correspondiente
+        GameState currentState = game.getStatus();
+        // Registrar inicio de turno del bot
+        gameEventService.recordTurnStart(game.getId(), botPlayer.getId(), game.getCurrentTurn());
 
-        // Análisis estratégico completo del tablero
-        Map<Long, TerritoryNode> gameGraph = buildGameGraph(game, botPlayer.getId());
-        List<StrategicObjective> objectives = identifyStrategicObjectives(gameGraph, botPlayer.getId(), mainObjective);
-
-        log.info("Bot identificó {} objetivos estratégicos", objectives.size());
-
-        // Ejecutar fases del turno con estrategia experta
-        performBotReinforcement(botPlayer, game, gameGraph, objectives, mainObjective);
-        performBotAttack(botPlayer, game, gameGraph, objectives, mainObjective);
-        performBotFortify(botPlayer, game, gameGraph, objectives, mainObjective);
+        switch (currentState) {
+            case REINFORCEMENT_5:
+                performInitialPlacement(botPlayer, game, 5);
+                break;
+            case REINFORCEMENT_3:
+                performInitialPlacement(botPlayer, game, 3);
+                advanceToNextPhase(game);
+                break;
+            case HOSTILITY_ONLY:
+                performBotAttack(botPlayer, game);
+                advanceToNextPhase(game);
+                performBotFortify(botPlayer, game);
+                advanceToNextPhase(game);
+                break;
+            case NORMAL_PLAY:
+                performBotReinforcement(botPlayer, game);
+                advanceToNextPhase(game);
+                performBotAttack(botPlayer, game);
+                advanceToNextPhase(game);
+                performBotFortify(botPlayer, game);
+                advanceToNextPhase(game);
+                break;
+            default:
+                log.warn("Estado de juego no manejado por el bot: {}", currentState);
+        }
+        //registrar fin de turno
+        gameEventService.recordTurnEnd(game.getId(), botPlayer.getId(), game.getCurrentTurn());
     }
 
-    @Override
-    public void performBotReinforcement(PlayerEntity botPlayer, GameEntity game) {
-        // Versión simplificada para compatibilidad
-        PlayerMainObjective mainObjective = getPlayerMainObjective(botPlayer);
-        Map<Long, TerritoryNode> gameGraph = buildGameGraph(game, botPlayer.getId());
-        List<StrategicObjective> objectives = identifyStrategicObjectives(gameGraph, botPlayer.getId(), mainObjective);
-        performBotReinforcement(botPlayer, game, gameGraph, objectives, mainObjective);
-    }
-
-    public void performBotReinforcement(PlayerEntity botPlayer, GameEntity game,
-                                        Map<Long, TerritoryNode> gameGraph,
-                                        List<StrategicObjective> objectives,
-                                        PlayerMainObjective mainObjective) {
-        log.info("Bot EXPERT-AGGRESSIVE realizando refuerzos estratégicos para jugador: {}", botPlayer.getId());
+    /**
+     * Maneja la colocación inicial de ejércitos (REINFORCEMENT_5 y REINFORCEMENT_3)
+     */
+    private void performInitialPlacement(PlayerEntity botPlayer, GameEntity game, int armiesToPlace) {
+        log.info("Bot EXPERT realizando colocación inicial de {} ejércitos", armiesToPlace);
 
         try {
             List<Territory> playerTerritories = gameTerritoryService.getTerritoriesByOwner(
                     game.getId(), botPlayer.getId());
 
             if (playerTerritories.isEmpty()) {
-                log.warn("Bot no tiene territorios para reforzar");
+                log.warn("Bot experto no tiene territorios para colocación inicial");
                 return;
             }
 
-            // Estrategia EXPERT: Refuerzos basados en objetivo principal
-            Map<Long, Integer> reinforcementPlan = planObjectiveBasedReinforcements(
-                    playerTerritories, objectives, gameGraph, botPlayer.getId(), mainObjective);
+            // Estrategia experta: analizar objetivo y distribuir estratégicamente
+            ObjectiveEntity objective = botPlayer.getObjective();
+            String objectiveType = (objective != null) ? objective.getType().name() : "GENERAL";
 
-            // Ejecutar plan de refuerzos
+            Map<Long, Integer> armiesDistribution = distributeInitialArmiesExpert(
+                    playerTerritories, game, botPlayer, armiesToPlace, objectiveType);
+
+            initialPlacementService.placeInitialArmies(
+                    game.getGameCode(), botPlayer.getId(), armiesDistribution);
+
+            // Registrar la colocación inicial en el historial
+            for (Map.Entry<Long, Integer> entry : armiesDistribution.entrySet()) {
+                Territory territory = playerTerritories.stream()
+                        .filter(t -> t.getId().equals(entry.getKey()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (territory != null) {
+                    gameEventService.recordReinforcementsPlaced(
+                            game.getId(),
+                            botPlayer.getId(),
+                            territory.getName(),
+                            entry.getValue(),
+                            game.getCurrentTurn()
+                    );
+                }
+            }
+
+            log.info("Bot EXPERT completó colocación inicial de {} ejércitos con estrategia {}",
+                    armiesToPlace, objectiveType);
+
+        } catch (Exception e) {
+            log.error("Error en colocación inicial del bot EXPERT: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Distribución experta de ejércitos iniciales basada en objetivos
+     */
+    private Map<Long, Integer> distributeInitialArmiesExpert(List<Territory> territories,
+                                                             GameEntity game, PlayerEntity botPlayer,
+                                                             int totalArmies, String objectiveType) {
+        Map<Long, Integer> distribution = new HashMap<>();
+
+        // Identificar objetivos estratégicos
+        List<StrategicTarget> strategicTargets = identifyStrategicTargets(game, botPlayer, objectiveType);
+
+        // Encontrar territorios que coinciden con objetivos estratégicos
+        List<Territory> priorityTerritories = territories.stream()
+                .filter(t -> strategicTargets.stream()
+                        .anyMatch(st -> isStrategicallyRelevant(t, st, game, botPlayer.getId())))
+                .collect(Collectors.toList());
+
+        if (priorityTerritories.isEmpty()) {
+            priorityTerritories = findBorderTerritories(territories, game, botPlayer.getId());
+        }
+
+        // Distribución según objetivo
+        switch (objectiveType.toUpperCase()) {
+            case "DESTRUCTION":
+                // Concentrar 80% en el territorio más fuerte
+                Territory strongest = priorityTerritories.stream()
+                        .max(Comparator.comparingInt(Territory::getArmies))
+                        .orElse(territories.get(0));
+                distribution.put(strongest.getId(), (int) (totalArmies * 0.8));
+
+                if (priorityTerritories.size() > 1 && totalArmies > 1) {
+                    Territory second = priorityTerritories.stream()
+                            .filter(t -> !t.getId().equals(strongest.getId()))
+                            .findFirst().orElse(null);
+                    if (second != null) {
+                        distribution.put(second.getId(), totalArmies - distribution.get(strongest.getId()));
+                    }
+                }
+                break;
+
+            case "OCCUPATION":
+                // Distribuir equitativamente entre territorios estratégicos
+                int armiesPerTerritory = totalArmies / priorityTerritories.size();
+                int remainder = totalArmies % priorityTerritories.size();
+
+                for (Territory territory : priorityTerritories) {
+                    int armies = armiesPerTerritory + (remainder > 0 ? 1 : 0);
+                    distribution.put(territory.getId(), armies);
+                    if (remainder > 0) remainder--;
+                }
+                break;
+
+            default:
+                // Estrategia balanceada para otros objetivos
+                distributeBalanced(distribution, priorityTerritories, totalArmies);
+        }
+
+        return distribution;
+    }
+
+    @Override
+    public void performBotReinforcement(PlayerEntity botPlayer, GameEntity game) {
+        log.info("Bot EXPERT-AGGRESSIVE realizando refuerzos para jugador: {}", botPlayer.getId());
+
+        try {
+            Player player = playerService.findById(botPlayer.getId())
+                    .orElseThrow(() -> new RuntimeException("Player not found"));
+            Game gameModel = gameMapper.toModel(game);
+
+            if (!reinforcementService.canPerformReinforcement(gameModel, player)) {
+                log.info("Bot EXPERT no puede realizar refuerzos en este momento");
+                return;
+            }
+
+            ReinforcementStatusDto status = reinforcementService.getReinforcementStatus(
+                    game.getGameCode(), botPlayer.getId());
+
+            int availableReinforcements = status.getArmiesToPlace();
+
+            if (availableReinforcements <= 0) {
+                log.info("Bot EXPERT no tiene refuerzos disponibles");
+                return;
+            }
+
+            List<Territory> playerTerritories = gameTerritoryService.getTerritoriesByOwner(
+                    game.getId(), botPlayer.getId());
+
+            if (playerTerritories.isEmpty()) {
+                log.warn("Bot EXPERT no tiene territorios para reforzar");
+                return;
+            }
+
+            // Análisis estratégico basado en objetivo
+            ObjectiveEntity objective = botPlayer.getObjective();
+            String objectiveType = (objective != null) ? objective.getType().name() : "GENERAL";
+
+            List<StrategicTarget> strategicTargets = identifyStrategicTargets(game, botPlayer, objectiveType);
+
+            // Planificar distribución de refuerzos según objetivo
+            Map<Long, Integer> reinforcementPlan = planExpertReinforcements(
+                    playerTerritories, strategicTargets, availableReinforcements, objectiveType, game, botPlayer.getId());
+
+            reinforcementService.placeReinforcementArmies(
+                    game.getGameCode(),
+                    botPlayer.getId(),
+                    reinforcementPlan
+            );
+
+            // Registrar refuerzos colocados
             for (Map.Entry<Long, Integer> entry : reinforcementPlan.entrySet()) {
                 Territory territory = playerTerritories.stream()
                         .filter(t -> t.getId().equals(entry.getKey()))
@@ -169,939 +307,511 @@ public class ExpertAggressiveExecutor implements BotStrategyExecutor {
                         .orElse(null);
 
                 if (territory != null) {
-                    //todo: Implementar cuando esté el servicio de refuerzos
-                    // reinforcementService.reinforceTerritory(game.getGameCode(),
-                    //     botPlayer.getId(), territory.getId(), entry.getValue());
-
-                    log.info("Bot planea reforzar {} con {} ejércitos (Estrategia: {})",
-                            territory.getName(), entry.getValue(),
-                            getObjectiveStrategyForTerritory(territory.getId(), objectives, mainObjective));
+                    gameEventService.recordReinforcementsPlaced(
+                            game.getId(),
+                            botPlayer.getId(),
+                            territory.getName(),
+                            entry.getValue(),
+                            game.getCurrentTurn()
+                    );
                 }
             }
 
+            log.info("Bot EXPERT distribuyó {} refuerzos con estrategia {}",
+                    availableReinforcements, objectiveType);
+
         } catch (Exception e) {
-            log.error("Error en refuerzos estratégicos del bot EXPERT-AGGRESSIVE: {}", e.getMessage());
+            log.error("Error en refuerzos del bot EXPERT-AGGRESSIVE: {}", e.getMessage());
         }
     }
 
     @Override
     public void performBotAttack(PlayerEntity botPlayer, GameEntity game) {
-        // Versión simplificada para compatibilidad
-        PlayerMainObjective mainObjective = getPlayerMainObjective(botPlayer);
-        Map<Long, TerritoryNode> gameGraph = buildGameGraph(game, botPlayer.getId());
-        List<StrategicObjective> objectives = identifyStrategicObjectives(gameGraph, botPlayer.getId(), mainObjective);
-        performBotAttack(botPlayer, game, gameGraph, objectives, mainObjective);
-    }
-
-    public void performBotAttack(PlayerEntity botPlayer, GameEntity game,
-                                 Map<Long, TerritoryNode> gameGraph,
-                                 List<StrategicObjective> objectives,
-                                 PlayerMainObjective mainObjective) {
-        log.info("Bot EXPERT-AGGRESSIVE ejecutando ataques estratégicos para jugador: {}", botPlayer.getId());
+        log.info("Bot EXPERT-AGGRESSIVE ejecutando ataques para jugador: {}", botPlayer.getId());
 
         try {
-            // Estrategia EXPERT: Ataques coordinados hacia objetivo principal
-            List<AttackPlan> attackPlans = planObjectiveBasedAttacks(gameGraph, objectives, botPlayer.getId(), mainObjective);
+            List<Territory> attackableTerritories = combatService.getAttackableTerritoriesForPlayer(
+                    game.getGameCode(), botPlayer.getId());
 
-            if (attackPlans.isEmpty()) {
-                log.info("Bot no identificó ataques estratégicos viables para su objetivo");
+            if (attackableTerritories.isEmpty()) {
+                log.info("Bot EXPERT no tiene territorios desde donde atacar");
                 return;
             }
 
-            // Ejecutar planes de ataque en orden de prioridad
-            int executedAttacks = 0;
-            int maxAttacks = 8; // Expert puede hacer más ataques coordinados
+            ObjectiveEntity objective = botPlayer.getObjective();
+            String objectiveType = (objective != null) ? objective.getType().name() : "GENERAL";
 
-            for (AttackPlan plan : attackPlans) {
-                if (executedAttacks >= maxAttacks) break;
+            List<StrategicTarget> strategicTargets = identifyStrategicTargets(game, botPlayer, objectiveType);
 
-                boolean success = executeAttackPlan(plan, game, botPlayer.getId());
-                if (success) {
-                    executedAttacks++;
-                    log.info("Bot ejecutó ataque estratégico: {} -> {} (Objetivo: {} - {})",
-                            plan.attackerName, plan.targetName, mainObjective.objectiveType, plan.strategicPurpose);
+            // Realizar ataques estratégicos (máximo 8 para nivel expert)
+            int maxAttacks = getMaxAttacksForObjective(objectiveType);
+            int attackCount = 0;
+
+            // Ordenar territorios atacantes por prioridad estratégica
+            List<Territory> prioritizedAttackers = prioritizeAttackers(attackableTerritories, strategicTargets);
+
+            for (Territory attackerTerritory : prioritizedAttackers) {
+                if (attackCount >= maxAttacks) break;
+
+                List<Territory> targets = combatService.getTargetsForTerritory(
+                        game.getGameCode(), attackerTerritory.getId(), botPlayer.getId());
+
+                if (targets.isEmpty()) continue;
+
+                // Seleccionar mejor objetivo según estrategia
+                Territory bestTarget = selectBestTarget(targets, strategicTargets, objectiveType);
+
+                if (bestTarget != null && shouldAttack(attackerTerritory, bestTarget, objectiveType)) {
+                    int attackingArmies = calculateOptimalAttackForce(
+                            attackerTerritory.getArmies(), bestTarget.getArmies(), objectiveType);
+
+                    if (attackingArmies > 0) {
+                        AttackDto attackDto = AttackDto.builder()
+                                .playerId(botPlayer.getId())
+                                .attackerCountryId(attackerTerritory.getId())
+                                .defenderCountryId(bestTarget.getId())
+                                .attackingArmies(attackingArmies)
+                                .build();
+
+                        CombatResultDto result = combatService.performCombat(game.getGameCode(), attackDto);
+
+                        // Registrar el ataque en el historial
+                        gameEventService.recordAttack(
+                                game.getId(),
+                                botPlayer.getId(),
+                                attackerTerritory.getName(),
+                                bestTarget.getName(),
+                                game.getCurrentTurn(),
+                                result.getTerritoryConquered()
+                        );
+
+                        // Si conquistó el territorio, registrar la conquista
+                        if (result.getTerritoryConquered()) {
+                            String formerOwnerName = getPlayerName(bestTarget.getOwnerId());
+                            gameEventService.recordTerritoryConquest(
+                                    game.getId(),
+                                    botPlayer.getId(),
+                                    bestTarget.getName(),
+                                    formerOwnerName,
+                                    game.getCurrentTurn()
+                            );
+                        }
+
+                        log.info("Bot EXPERT atacó desde {} hacia {}: Conquistado={} (Estrategia: {})",
+                                attackerTerritory.getName(), bestTarget.getName(),
+                                result.getTerritoryConquered(), objectiveType);
+
+                        attackCount++;
+                    }
                 }
             }
 
         } catch (Exception e) {
-            log.error("Error en ataques estratégicos del bot EXPERT-AGGRESSIVE: {}", e.getMessage());
+            log.error("Error en ataques del bot EXPERT-AGGRESSIVE: {}", e.getMessage());
         }
     }
 
     @Override
     public void performBotFortify(PlayerEntity botPlayer, GameEntity game) {
-        // Versión simplificada para compatibilidad
-        PlayerMainObjective mainObjective = getPlayerMainObjective(botPlayer);
-        Map<Long, TerritoryNode> gameGraph = buildGameGraph(game, botPlayer.getId());
-        List<StrategicObjective> objectives = identifyStrategicObjectives(gameGraph, botPlayer.getId(), mainObjective);
-        performBotFortify(botPlayer, game, gameGraph, objectives, mainObjective);
+        log.info("Bot EXPERT-AGGRESSIVE realizando fortificación para jugador: {}", botPlayer.getId());
+
+        try {
+            List<Territory> fortifiableTerritories = fortificationService.getFortifiableTerritoriesForPlayer(
+                    game.getGameCode(), botPlayer.getId());
+
+            if (fortifiableTerritories.isEmpty()) {
+                log.info("Bot EXPERT no tiene territorios desde donde fortificar");
+                return;
+            }
+
+            ObjectiveEntity objective = botPlayer.getObjective();
+            String objectiveType = (objective != null) ? objective.getType().name() : "GENERAL";
+
+            // Encontrar el mejor movimiento de fortificación estratégico
+            Optional<FortificationMove> bestMove = findBestExpertFortificationMove(
+                    fortifiableTerritories, game, botPlayer.getId(), objectiveType);
+
+            if (bestMove.isPresent()) {
+                FortificationMove move = bestMove.get();
+
+                FortifyDto fortifyDto = new FortifyDto();
+                fortifyDto.setPlayerId(botPlayer.getId());
+                fortifyDto.setFromCountryId(move.sourceId);
+                fortifyDto.setToCountryId(move.targetId);
+                fortifyDto.setArmies(move.armies);
+
+                boolean success = fortificationService.performFortification(game.getGameCode(), fortifyDto);
+
+                if (success) {
+                    // Registrar la fortificación en el historial
+                    gameEventService.recordFortification(
+                            game.getId(),
+                            botPlayer.getId(),
+                            move.sourceName,
+                            move.targetName,
+                            move.armies,
+                            game.getCurrentTurn()
+                    );
+                    log.info("Bot EXPERT fortificó: {} -> {} ({} ejércitos) - Propósito: {}",
+                            move.sourceName, move.targetName, move.armies, move.purpose);
+                }
+            } else {
+                log.info("Bot EXPERT no encontró movimientos de fortificación beneficiosos");
+            }
+
+        } catch (Exception e) {
+            log.error("Error en fortificación del bot EXPERT-AGGRESSIVE: {}", e.getMessage());
+        }
     }
 
+    // Métodos auxiliares simplificados
+
+    private List<StrategicTarget> identifyStrategicTargets(GameEntity game, PlayerEntity botPlayer, String objectiveType) {
+        List<StrategicTarget> targets = new ArrayList<>();
+
+        try {
+            List<Territory> allTerritories = gameTerritoryService.getAllAvailableTerritories();
+            List<Territory> enemyTerritories = allTerritories.stream()
+                    .filter(t -> !t.getOwnerId().equals(botPlayer.getId()))
+                    .collect(Collectors.toList());
+
+            switch (objectiveType.toUpperCase()) {
+                case "OCCUPATION":
+                    targets.addAll(identifyOccupationTargets(botPlayer, enemyTerritories));
+                    break;
+                case "DESTRUCTION":
+                    targets.addAll(identifyDestructionTargets(botPlayer, enemyTerritories));
+                    break;
+                default:
+                    targets.addAll(identifyGeneralTargets(enemyTerritories));
+            }
+
+        } catch (Exception e) {
+            log.error("Error identificando objetivos estratégicos: {}", e.getMessage());
+        }
+
+        return targets.stream()
+                .sorted((a, b) -> Integer.compare(b.priority, a.priority))
+                .collect(Collectors.toList());
+    }
+
+    private List<StrategicTarget> identifyOccupationTargets(PlayerEntity botPlayer, List<Territory> enemyTerritories) {
+        List<StrategicTarget> targets = new ArrayList<>();
+        ObjectiveEntity objective = botPlayer.getObjective();
+
+        if (objective != null && objective.getTargetData() != null) {
+            String[] targetContinents = objective.getTargetData().split(",");
+
+            for (String continent : targetContinents) {
+                enemyTerritories.stream()
+                        .filter(t -> continent.trim().equalsIgnoreCase(t.getContinentName()))
+                        .forEach(t -> targets.add(new StrategicTarget(
+                                t.getId(), t.getName(), 90 - t.getArmies(), "OCCUPATION")));
+            }
+        }
+        return targets;
+    }
+
+    private List<StrategicTarget> identifyDestructionTargets(PlayerEntity botPlayer, List<Territory> enemyTerritories) {
+        List<StrategicTarget> targets = new ArrayList<>();
+        ObjectiveEntity objective = botPlayer.getObjective();
+
+        if (objective != null && objective.getTargetData() != null) {
+            try {
+                Long targetPlayerId = Long.parseLong(objective.getTargetData().trim());
+                enemyTerritories.stream()
+                        .filter(t -> t.getOwnerId().equals(targetPlayerId))
+                        .forEach(t -> targets.add(new StrategicTarget(
+                                t.getId(), t.getName(), 95 - t.getArmies(), "DESTRUCTION")));
+            } catch (NumberFormatException e) {
+                log.warn("No se pudo parsear el ID del jugador objetivo: {}", objective.getTargetData());
+            }
+        }
+        return targets;
+    }
+
+    private List<StrategicTarget> identifyGeneralTargets(List<Territory> enemyTerritories) {
+        return enemyTerritories.stream()
+                .filter(t -> t.getArmies() <= 3)
+                .map(t -> new StrategicTarget(t.getId(), t.getName(), 50 - t.getArmies(), "EXPANSION"))
+                .collect(Collectors.toList());
+    }
+
+    private Map<Long, Integer> planExpertReinforcements(List<Territory> playerTerritories,
+                                                        List<StrategicTarget> strategicTargets,
+                                                        int availableReinforcements,
+                                                        String objectiveType,
+                                                        GameEntity game,
+                                                        Long playerId) {
+        Map<Long, Integer> plan = new HashMap<>();
+
+        switch (objectiveType.toUpperCase()) {
+            case "DESTRUCTION":
+                // Concentrar en el territorio más fuerte en frontera
+                Territory strongestBorder = findStrongestBorderTerritory(playerTerritories, game, playerId);
+                if (strongestBorder != null) {
+                    plan.put(strongestBorder.getId(), availableReinforcements);
+                }
+                break;
+
+            case "OCCUPATION":
+                // Distribuir en territorios que dan acceso a continentes objetivo
+                distributeForOccupation(plan, playerTerritories, availableReinforcements);
+                break;
+
+            default:
+                // Distribución equilibrada en fronteras
+                List<Territory> borderTerritories = findBorderTerritories(playerTerritories, game, playerId);
+                distributeBalanced(plan, borderTerritories.isEmpty() ? playerTerritories : borderTerritories,
+                        availableReinforcements);
+        }
+
+        return plan;
+    }
+
+    private List<Territory> findBorderTerritories(List<Territory> territories, GameEntity game, Long playerId) {
+        return territories.stream()
+                .filter(territory -> {
+                    List<Territory> neighbors = gameTerritoryService.getNeighborTerritories(game.getId(), territory.getId());
+                    return neighbors.stream().anyMatch(neighbor -> !neighbor.getOwnerId().equals(playerId));
+                })
+                .collect(Collectors.toList());
+    }
+
+    private Territory findStrongestBorderTerritory(List<Territory> territories, GameEntity game, Long playerId) {
+        return findBorderTerritories(territories, game, playerId).stream()
+                .max(Comparator.comparingInt(Territory::getArmies))
+                .orElse(territories.get(0));
+    }
+
+    private void distributeForOccupation(Map<Long, Integer> plan, List<Territory> territories, int available) {
+        List<Territory> sorted = territories.stream()
+                .sorted((a, b) -> Integer.compare(b.getArmies(), a.getArmies()))
+                .collect(Collectors.toList());
+
+        if (!sorted.isEmpty()) {
+            plan.put(sorted.get(0).getId(), Math.max(1, available * 70 / 100));
+            if (sorted.size() > 1 && available > 1) {
+                plan.put(sorted.get(1).getId(), available - plan.get(sorted.get(0).getId()));
+            }
+        }
+    }
+
+    private void distributeBalanced(Map<Long, Integer> plan, List<Territory> territories, int available) {
+        if (territories.isEmpty()) return;
+
+        int perTerritory = Math.max(1, available / Math.min(3, territories.size()));
+        int remainder = available % Math.min(3, territories.size());
+
+        for (int i = 0; i < Math.min(3, territories.size()) && available > 0; i++) {
+            int toAssign = perTerritory + (remainder > 0 ? 1 : 0);
+            plan.put(territories.get(i).getId(), toAssign);
+            available -= toAssign;
+            if (remainder > 0) remainder--;
+        }
+    }
+
+    private boolean isStrategicallyRelevant(Territory territory, StrategicTarget target, GameEntity game, Long playerId) {
+        // Verificar si el territorio está cerca de objetivos estratégicos
+        List<Territory> neighbors = gameTerritoryService.getNeighborTerritories(game.getId(), territory.getId());
+        return neighbors.stream().anyMatch(n -> n.getId().equals(target.territoryId));
+    }
+
+    private int getMaxAttacksForObjective(String objectiveType) {
+        switch (objectiveType.toUpperCase()) {
+            case "DESTRUCTION": return 10;
+            case "OCCUPATION": return 8;
+            default: return 6;
+        }
+    }
+
+    private List<Territory> prioritizeAttackers(List<Territory> attackers, List<StrategicTarget> targets) {
+        return attackers.stream()
+                .sorted((a, b) -> {
+                    int priorityA = targets.stream()
+                            .filter(t -> t.territoryId.equals(a.getId()))
+                            .mapToInt(t -> t.priority)
+                            .max().orElse(0);
+                    int priorityB = targets.stream()
+                            .filter(t -> t.territoryId.equals(b.getId()))
+                            .mapToInt(t -> t.priority)
+                            .max().orElse(0);
+                    return Integer.compare(priorityB, priorityA);
+                })
+                .collect(Collectors.toList());
+    }
+
+    private Territory selectBestTarget(List<Territory> targets, List<StrategicTarget> strategicTargets, String objectiveType) {
+        return targets.stream()
+                .max((a, b) -> {
+                    int priorityA = strategicTargets.stream()
+                            .filter(st -> st.territoryId.equals(a.getId()))
+                            .mapToInt(st -> st.priority)
+                            .max().orElse(0);
+                    int priorityB = strategicTargets.stream()
+                            .filter(st -> st.territoryId.equals(b.getId()))
+                            .mapToInt(st -> st.priority)
+                            .max().orElse(0);
+
+                    if (priorityA != priorityB) {
+                        return Integer.compare(priorityA, priorityB);
+                    }
+                    return Integer.compare(b.getArmies(), a.getArmies()); // Preferir territorios más débiles en caso de empate
+                })
+                .orElse(targets.get(0));
+    }
+
+    private boolean shouldAttack(Territory attacker, Territory target, String objectiveType) {
+        double probability = evaluateAttackProbability(null, attacker.getArmies(), target.getArmies());
+        double minProbability = getMinAttackProbability(objectiveType);
+        return probability >= minProbability;
+    }
+
+    private double getMinAttackProbability(String objectiveType) {
+        switch (objectiveType.toUpperCase()) {
+            case "DESTRUCTION": return 0.40;
+            case "OCCUPATION": return 0.50;
+            default: return 0.55;
+        }
+    }
+
+    private int calculateOptimalAttackForce(int attackerArmies, int defenderArmies, String objectiveType) {
+        int baseForce = Math.min(attackerArmies - 1, 3);
+
+        switch (objectiveType.toUpperCase()) {
+            case "DESTRUCTION":
+                return Math.min(attackerArmies - 1, defenderArmies + 2);
+            default:
+                return Math.max(1, baseForce);
+        }
+    }
+
+    private Optional<FortificationMove> findBestExpertFortificationMove(List<Territory> fortifiableTerritories,
+                                                                        GameEntity game, Long playerId,
+                                                                        String objectiveType) {
+        for (Territory source : fortifiableTerritories) {
+            if (source.getArmies() <= 2) continue;
+
+            List<Territory> targets = fortificationService.getFortificationTargetsForTerritory(
+                    game.getGameCode(), source.getId(), playerId);
+
+            for (Territory target : targets) {
+                if (shouldFortifyExpert(source, target, objectiveType, game, playerId)) {
+                    int armiesToMove = calculateExpertFortificationArmies(source.getArmies(), objectiveType);
+
+                    return Optional.of(new FortificationMove(
+                            source.getId(), source.getName(),
+                            target.getId(), target.getName(),
+                            armiesToMove, "Consolidación estratégica " + objectiveType
+                    ));
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private boolean shouldFortifyExpert(Territory source, Territory target, String objectiveType,
+                                        GameEntity game, Long playerId) {
+        List<Territory> targetNeighbors = gameTerritoryService.getNeighborTerritories(game.getId(), target.getId());
+        List<Territory> sourceNeighbors = gameTerritoryService.getNeighborTerritories(game.getId(), source.getId());
+
+        boolean targetIsBorder = targetNeighbors.stream().anyMatch(n -> !n.getOwnerId().equals(playerId));
+        boolean sourceIsSafe = sourceNeighbors.stream().allMatch(n -> n.getOwnerId().equals(playerId));
+
+        if ("DESTRUCTION".equals(objectiveType)) {
+            return targetIsBorder && target.getArmies() > source.getArmies();
+        }
+
+        return sourceIsSafe && targetIsBorder && target.getArmies() < source.getArmies() - 2;
+    }
+
+    private int calculateExpertFortificationArmies(int sourceArmies, String objectiveType) {
+        switch (objectiveType.toUpperCase()) {
+            case "DESTRUCTION":
+                return Math.max(1, sourceArmies * 80 / 100 - 1);
+            default:
+                return Math.max(1, sourceArmies / 2);
+        }
+    }
+
+    /**
+     * Avanza a la siguiente fase del turno
+     */
+    private void advanceToNextPhase(GameEntity game) {
+        try {
+            TurnPhase currentPhase = game.getCurrentPhase();
+
+            switch (currentPhase) {
+                case REINFORCEMENT:
+                    gameStateService.changeTurnPhase(gameMapper.toModel(game), TurnPhase.ATTACK);
+                    break;
+                case ATTACK:
+                    gameStateService.changeTurnPhase(gameMapper.toModel(game), TurnPhase.FORTIFY);
+                    break;
+                case FORTIFY:
+                    gameStateService.changeTurnPhase(gameMapper.toModel(game), TurnPhase.END_TURN);
+                    break;
+                case END_TURN:
+                    gameStateService.changeTurnPhase(gameMapper.toModel(game), TurnPhase.REINFORCEMENT);
+                    break;
+                default:
+                    log.warn("Fase no manejada para avance: {}", currentPhase);
+            }
+
+            log.info("Bot EXPERT avanzó de fase {} a {}", currentPhase, game.getCurrentPhase());
+
+        } catch (Exception e) {
+            log.error("Error al avanzar fase del bot EXPERT: {}", e.getMessage());
+        }
+    }
+
+    // Métodos no implementados pero requeridos por la interfaz
     @Override
     public double evaluateAttackProbability(PlayerEntity botPlayer, int attackerArmies, int defenderArmies) {
-        // Estimación simplificada de probabilidad de éxito
-        if (attackerArmies <= 1) return 0.0;
+        // Cálculo más sofisticado para bot experto
+        if (attackerArmies <= 0 || defenderArmies <= 0) return 0.0;
 
+        // Fórmula mejorada considerando ventaja del atacante
         double ratio = (double) attackerArmies / defenderArmies;
+        double baseProbability = Math.min(0.95, ratio * 0.6);
 
-        if (ratio >= 3.0) return 0.85;
-        if (ratio >= 2.0) return 0.70;
-        if (ratio >= 1.5) return 0.55;
-        if (ratio >= 1.2) return 0.40;
-        return 0.25;
+        // Ajuste por número de dados
+        if (attackerArmies >= 3) baseProbability += 0.1;
+        if (defenderArmies == 1) baseProbability += 0.15;
+
+        return Math.max(0.05, baseProbability);
     }
 
-    //no se usan, quedan por la intefaz
     @Override
     public List<CountryEntity> getBestAttackTargets(PlayerEntity botPlayer, GameEntity game) {
+        // Implementación vacía - la lógica está en selectBestTarget
         return List.of();
     }
 
     @Override
     public List<CountryEntity> getBestDefensePositions(PlayerEntity botPlayer, GameEntity game) {
+        // Implementación vacía - la lógica está en los métodos de fortificación
         return List.of();
     }
 
-    public void performBotFortify(PlayerEntity botPlayer, GameEntity game,
-                                  Map<Long, TerritoryNode> gameGraph,
-                                  List<StrategicObjective> objectives,
-                                  PlayerMainObjective mainObjective) {
-        log.info("Bot EXPERT-AGGRESSIVE realizando fortificación estratégica para jugador: {}", botPlayer.getId());
-
+    /**
+     * Obtiene el nombre de un jugador por su ID
+     */
+    private String getPlayerName(Long playerId) {
         try {
-            // Estrategia EXPERT: Consolidación de fuerzas usando Dijkstra
-            List<FortificationPlan> fortificationPlans = planObjectiveBasedFortification(
-                    gameGraph, objectives, botPlayer.getId(), mainObjective);
-
-            if (fortificationPlans.isEmpty()) {
-                log.info("Bot no identificó movimientos de fortificación estratégicos");
-                return;
-            }
-
-            // Ejecutar el mejor plan de fortificación
-            FortificationPlan bestPlan = fortificationPlans.get(0);
-            boolean success = executeFortificationPlan(bestPlan, game, botPlayer.getId());
-
-            if (success) {
-                log.info("Bot ejecutó fortificación estratégica: {} -> {} ({} ejércitos) - Propósito: {} ({})",
-                        bestPlan.sourceName, bestPlan.targetName, bestPlan.armies,
-                        bestPlan.purpose, mainObjective.objectiveType);
-            }
-
-        } catch (Exception e) {
-            log.error("Error en fortificación estratégica del bot EXPERT-AGGRESSIVE: {}", e.getMessage());
-        }
-    }
-
-    // ===== MÉTODOS PARA OBTENER Y PROCESAR OBJETIVO PRINCIPAL =====
-
-    /**
-     * Obtiene y procesa el objetivo principal del jugador
-     */
-    private PlayerMainObjective getPlayerMainObjective(PlayerEntity player) {
-        ObjectiveEntity objective = player.getObjective();
-        if (objective == null) {
-            log.warn("Player {} no tiene objetivo asignado", player.getId());
-            // Crear un objetivo por defecto
-            ObjectiveEntity defaultObjective = new ObjectiveEntity();
-            defaultObjective.setDescription("Objetivo por defecto: Expansión territorial");
-            // Nota: Necesitarías setear el ObjectiveType aquí según tu implementación
-            defaultObjective.setType(ObjectiveType.DESTRUCTION);
-            defaultObjective.setTargetData("Reventar Asia y america del Sur");
-            defaultObjective.setIsCommon(false);
-            return new PlayerMainObjective(defaultObjective);
-        }
-
-        log.info("Procesando objetivo del player {}: {} - {}",
-                player.getId(), objective.getType(), objective.getDescription());
-        return new PlayerMainObjective(objective);
-    }
-
-    /**
-     * Identifica objetivos estratégicos basados en el objetivo principal del jugador
-     */
-    private List<StrategicObjective> identifyStrategicObjectives(Map<Long, TerritoryNode> graph,
-                                                                 Long playerId,
-                                                                 PlayerMainObjective mainObjective) {
-        List<StrategicObjective> objectives = new ArrayList<>();
-
-        switch (mainObjective.objectiveType.toUpperCase()) {
-            case "OCCUPATION":
-                objectives.addAll(identifyOccupationObjectives(graph, playerId, mainObjective));
-                break;
-            case "DESTRUCTION":
-                objectives.addAll(identifyDestructionObjectives(graph, playerId, mainObjective));
-                break;
-            case "COMMON":
-                objectives.addAll(identifyCommonObjectives(graph, playerId, mainObjective));
-                break;
-            default:
-                log.warn("Tipo de objetivo desconocido: {}", mainObjective.objectiveType);
-                objectives.addAll(identifyGeneralObjectives(graph, playerId));
-        }
-
-        // Agregar objetivos secundarios estratégicos
-        objectives.addAll(identifySecondaryObjectives(graph, playerId));
-
-        // Ordenar por prioridad descendente
-        objectives.sort((a, b) -> Integer.compare(b.priority, a.priority));
-        return objectives;
-    }
-
-    /**
-     * Identifica objetivos para misiones de ocupación (ej: ocupar Asia)
-     */
-    private List<StrategicObjective> identifyOccupationObjectives(Map<Long, TerritoryNode> graph,
-                                                                  Long playerId,
-                                                                  PlayerMainObjective mainObjective) {
-        List<StrategicObjective> objectives = new ArrayList<>();
-
-        for (String targetContinent : mainObjective.targetData) {
-            // Obtener territorios del continente objetivo
-            List<Territory> continentTerritories = getContinentTerritories(targetContinent);
-
-            for (Territory territory : continentTerritories) {
-                TerritoryNode node = graph.get(territory.getId());
-                if (node != null && !node.ownerId.equals(playerId)) {
-                    StrategicObjective objective = new StrategicObjective(
-                            node.territoryId, node.name, 90, "MAIN_OBJECTIVE");
-                    objective.isMainObjective = true;
-                    objective.pathFromClosestOwned = findPathToObjective(node, graph, playerId);
-                    objective.estimatedCost = estimateConquestCost(node, graph, playerId);
-                    objectives.add(objective);
-
-                    log.info("Objetivo de ocupación identificado: {} en continente {}",
-                            territory.getName(), targetContinent);
-                }
-            }
-        }
-
-        return objectives;
-    }
-
-    /**
-     * Identifica objetivos para misiones de destrucción (eliminar un jugador)
-     */
-    private List<StrategicObjective> identifyDestructionObjectives(Map<Long, TerritoryNode> graph,
-                                                                   Long playerId,
-                                                                   PlayerMainObjective mainObjective) {
-        List<StrategicObjective> objectives = new ArrayList<>();
-
-        for (String targetPlayerData : mainObjective.targetData) {
-            // Asumir que targetPlayerData contiene el ID del jugador objetivo
-            try {
-                Long targetPlayerId = Long.parseLong(targetPlayerData);
-
-                // Encontrar todos los territorios del jugador objetivo
-                List<TerritoryNode> targetTerritories = graph.values().stream()
-                        .filter(node -> node.ownerId.equals(targetPlayerId))
-                        .collect(Collectors.toList());
-
-                // Priorizar territorios más débiles del enemigo
-                for (TerritoryNode territory : targetTerritories) {
-                    int priority = 95 - territory.armies; // Más débiles = mayor prioridad
-                    StrategicObjective objective = new StrategicObjective(
-                            territory.territoryId, territory.name, priority, "MAIN_OBJECTIVE");
-                    objective.isMainObjective = true;
-                    objective.pathFromClosestOwned = findPathToObjective(territory, graph, playerId);
-                    objective.estimatedCost = estimateConquestCost(territory, graph, playerId);
-                    objectives.add(objective);
-                }
-
-                log.info("Objetivos de destrucción identificados: {} territorios del jugador {}",
-                        targetTerritories.size(), targetPlayerId);
-
-            } catch (NumberFormatException e) {
-                log.warn("No se pudo parsear el ID del jugador objetivo: {}", targetPlayerData);
-            }
-        }
-
-        return objectives;
-    }
-
-    /**
-     * Identifica objetivos para misiones comunes
-     */
-    private List<StrategicObjective> identifyCommonObjectives(Map<Long, TerritoryNode> graph,
-                                                              Long playerId,
-                                                              PlayerMainObjective mainObjective) {
-        List<StrategicObjective> objectives = new ArrayList<>();
-
-        // Los objetivos comunes generalmente requieren ocupar un número específico de territorios
-        // Priorizar territorios fáciles de conquistar para alcanzar el número requerido
-
-        List<TerritoryNode> enemyTerritories = graph.values().stream()
-                .filter(node -> !node.ownerId.equals(playerId))
-                .sorted(Comparator.comparingInt(node -> node.armies))
-                .collect(Collectors.toList());
-
-        int targetCount = Math.min(15, enemyTerritories.size()); // Ejemplo: 15 territorios
-
-        for (int i = 0; i < targetCount; i++) {
-            TerritoryNode territory = enemyTerritories.get(i);
-            int priority = 80 - (i * 2); // Prioridad decreciente
-
-            StrategicObjective objective = new StrategicObjective(
-                    territory.territoryId, territory.name, priority, "MAIN_OBJECTIVE");
-            objective.isMainObjective = true;
-            objective.pathFromClosestOwned = findPathToObjective(territory, graph, playerId);
-            objective.estimatedCost = estimateConquestCost(territory, graph, playerId);
-            objectives.add(objective);
-        }
-
-        log.info("Objetivos comunes identificados: {} territorios prioritarios", targetCount);
-        return objectives;
-    }
-
-    /**
-     * Identifica objetivos generales cuando no se puede determinar el tipo específico
-     */
-    private List<StrategicObjective> identifyGeneralObjectives(Map<Long, TerritoryNode> graph, Long playerId) {
-        List<StrategicObjective> objectives = new ArrayList<>();
-
-        for (TerritoryNode node : graph.values()) {
-            if (!node.ownerId.equals(playerId)) {
-                int priority = evaluateStrategicValue(node, graph, playerId);
-
-                if (priority > 0) {
-                    String type = determineObjectiveType(node, graph, playerId);
-                    StrategicObjective objective = new StrategicObjective(
-                            node.territoryId, node.name, priority, type);
-
-                    objective.pathFromClosestOwned = findPathToObjective(node, graph, playerId);
-                    objective.estimatedCost = estimateConquestCost(node, graph, playerId);
-                    objectives.add(objective);
-                }
-            }
-        }
-
-        return objectives;
-    }
-
-    /**
-     * Identifica objetivos secundarios que complementan el objetivo principal
-     */
-    private List<StrategicObjective> identifySecondaryObjectives(Map<Long, TerritoryNode> graph, Long playerId) {
-        List<StrategicObjective> objectives = new ArrayList<>();
-
-        // Territorios que proporcionan bonificaciones de continente
-        // Territorios puente estratégicos
-        // Fortalezas enemigas que bloquean el progreso
-
-        for (TerritoryNode node : graph.values()) {
-            if (!node.ownerId.equals(playerId)) {
-                // Evaluar como objetivo secundario
-                if (node.neighbors.size() >= 4) { // Territorio central
-                    StrategicObjective objective = new StrategicObjective(
-                            node.territoryId, node.name, 30, "BRIDGE_TERRITORY");
-                    objective.pathFromClosestOwned = findPathToObjective(node, graph, playerId);
-                    objective.estimatedCost = estimateConquestCost(node, graph, playerId);
-                    objectives.add(objective);
-                }
-            }
-        }
-
-        return objectives;
-    }
-
-    // ===== MÉTODOS DE PLANIFICACIÓN BASADA EN OBJETIVOS =====
-
-    private Map<Long, Integer> planObjectiveBasedReinforcements(List<Territory> playerTerritories,
-                                                                List<StrategicObjective> objectives,
-                                                                Map<Long, TerritoryNode> graph,
-                                                                Long playerId,
-                                                                PlayerMainObjective mainObjective) {
-        Map<Long, Integer> plan = new HashMap<>();
-
-        // Priorizar refuerzos para territorios que conducen al objetivo principal
-        List<StrategicObjective> mainObjectives = objectives.stream()
-                .filter(obj -> obj.isMainObjective)
-                .limit(3)
-                .collect(Collectors.toList());
-
-        for (StrategicObjective objective : mainObjectives) {
-            if (!objective.pathFromClosestOwned.isEmpty()) {
-                Long firstOwnedInPath = objective.pathFromClosestOwned.get(0);
-                plan.put(firstOwnedInPath, plan.getOrDefault(firstOwnedInPath, 0) + 3);
-            }
-        }
-
-        // Si no hay plan específico, reforzar según tipo de objetivo
-        if (plan.isEmpty()) {
-            plan = planDefaultReinforcements(playerTerritories, graph, playerId, mainObjective);
-        }
-
-        return plan;
-    }
-
-    private Map<Long, Integer> planDefaultReinforcements(List<Territory> playerTerritories,
-                                                         Map<Long, TerritoryNode> graph,
-                                                         Long playerId,
-                                                         PlayerMainObjective mainObjective) {
-        Map<Long, Integer> plan = new HashMap<>();
-
-        switch (mainObjective.objectiveType.toUpperCase()) {
-            case "DESTRUCTION":
-                // Reforzar territorios fronterizos más agresivos
-                Territory strongestBorder = playerTerritories.stream()
-                        .filter(t -> isBorderTerritory(t, graph, playerId))
-                        .max(Comparator.comparingInt(Territory::getArmies))
-                        .orElse(playerTerritories.get(0));
-                plan.put(strongestBorder.getId(), 4);
-                break;
-
-            case "OCCUPATION":
-                // Reforzar territorios que dan acceso a continentes objetivo
-                Territory strategicAccess = findBestAccessToTargetContinent(playerTerritories, mainObjective);
-                if (strategicAccess != null) {
-                    plan.put(strategicAccess.getId(), 3);
-                } else {
-                    plan.put(playerTerritories.get(0).getId(), 2);
-                }
-                break;
-
-            default:
-                // Refuerzo equilibrado
-                Territory weakestBorder = playerTerritories.stream()
-                        .filter(t -> isBorderTerritory(t, graph, playerId))
-                        .min(Comparator.comparingInt(Territory::getArmies))
-                        .orElse(playerTerritories.get(0));
-                plan.put(weakestBorder.getId(), 2);
-        }
-
-        return plan;
-    }
-
-    private List<AttackPlan> planObjectiveBasedAttacks(Map<Long, TerritoryNode> graph,
-                                                       List<StrategicObjective> objectives,
-                                                       Long playerId,
-                                                       PlayerMainObjective mainObjective) {
-        List<AttackPlan> plans = new ArrayList<>();
-
-        // Priorizar ataques hacia objetivos principales
-        List<StrategicObjective> priorityObjectives = objectives.stream()
-                .filter(obj -> obj.isMainObjective)
-                .limit(5)
-                .collect(Collectors.toList());
-
-        for (StrategicObjective objective : priorityObjectives) {
-            List<Long> path = objective.pathFromClosestOwned;
-
-            if (path.size() >= 2) {
-                Long attackerId = path.get(path.size() - 2);
-                TerritoryNode attacker = graph.get(attackerId);
-                TerritoryNode target = graph.get(objective.territoryId);
-
-                if (attacker.ownerId.equals(playerId) && attacker.armies > 1) {
-                    int attackingArmies = calculateOptimalAttackForce(attacker.armies, target.armies, mainObjective);
-                    double probability = evaluateAttackProbability(null, attacker.armies, target.armies);
-
-                    if (probability > getMinimumAttackProbability(mainObjective)) {
-                        AttackPlan plan = new AttackPlan(
-                                attackerId, attacker.name,
-                                objective.territoryId, target.name,
-                                attackingArmies, probability,
-                                "Objetivo Principal: " + mainObjective.objectiveType,
-                                objective.priority
-                        );
-                        plans.add(plan);
-                    }
-                }
-            }
-        }
-
-        // Agregar ataques secundarios si es necesario
-        if (plans.size() < 3) {
-            plans.addAll(planSecondaryAttacks(graph, objectives, playerId));
-        }
-
-        plans.sort((a, b) -> {
-            int priorityComparison = Integer.compare(b.priority, a.priority);
-            if (priorityComparison != 0) return priorityComparison;
-            return Double.compare(b.successProbability, a.successProbability);
-        });
-
-        return plans;
-    }
-
-    private List<FortificationPlan> planObjectiveBasedFortification(Map<Long, TerritoryNode> graph,
-                                                                    List<StrategicObjective> objectives,
-                                                                    Long playerId,
-                                                                    PlayerMainObjective mainObjective) {
-        List<FortificationPlan> plans = new ArrayList<>();
-
-        // Consolidar fuerzas hacia el objetivo principal
-        List<StrategicObjective> mainObjectives = objectives.stream()
-                .filter(obj -> obj.isMainObjective)
-                .limit(2)
-                .collect(Collectors.toList());
-
-        List<TerritoryNode> ownedTerritories = graph.values().stream()
-                .filter(node -> node.ownerId.equals(playerId))
-                .collect(Collectors.toList());
-
-        for (StrategicObjective objective : mainObjectives) {
-            if (!objective.pathFromClosestOwned.isEmpty()) {
-                Long targetTerritoryId = objective.pathFromClosestOwned.get(0);
-                TerritoryNode target = graph.get(targetTerritoryId);
-
-                for (TerritoryNode source : ownedTerritories) {
-                    if (source.armies > 3 && !source.territoryId.equals(targetTerritoryId)) {
-                        List<Long> path = findShortestPath(graph, source.territoryId, targetTerritoryId, playerId);
-
-                        if (!path.isEmpty() && path.size() <= getMaxFortificationDistance(mainObjective)) {
-                            int armiesToMove = calculateOptimalFortificationForce(source.armies, mainObjective);
-                            if (armiesToMove > 0) {
-                                FortificationPlan plan = new FortificationPlan(
-                                        source.territoryId, source.name,
-                                        targetTerritoryId, target.name,
-                                        armiesToMove,
-                                        "Consolidación para " + mainObjective.objectiveType + ": " + objective.name,
-                                        objective.priority,
-                                        path
-                                );
-                                plans.add(plan);
-                            }
+            return playerService.findById(playerId)
+                    .map(player -> {
+                        if (player.getDisplayName() != null) {
+                            return player.getDisplayName();
+                        } else if (player.getBotProfile() != null && player.getBotProfile().getBotName() != null) {
+                            return player.getBotProfile().getBotName();
                         }
-                    }
-                }
-            }
-        }
-
-        plans.sort((a, b) -> Integer.compare(b.priority, a.priority));
-        return plans;
-    }
-
-    // ===== MÉTODOS AUXILIARES ESPECÍFICOS PARA OBJETIVOS =====
-
-    private int calculateOptimalAttackForce(int attackerArmies, int defenderArmies, PlayerMainObjective mainObjective) {
-        int baseForce = Math.min(attackerArmies - 1, Math.max(2, defenderArmies + 1));
-
-        // Ajustar según tipo de objetivo
-        switch (mainObjective.objectiveType.toUpperCase()) {
-            case "DESTRUCTION":
-                return Math.min(attackerArmies - 1, baseForce + 2); // Más agresivo
-            case "OCCUPATION":
-                return baseForce; // Balanceado
-            default:
-                return Math.max(2, baseForce - 1); // Más conservador
-        }
-    }
-
-    private double getMinimumAttackProbability(PlayerMainObjective mainObjective) {
-        switch (mainObjective.objectiveType.toUpperCase()) {
-            case "DESTRUCTION":
-                return 0.45; // Más agresivo, acepta menor probabilidad
-            case "OCCUPATION":
-                return 0.55; // Balanceado
-            default:
-                return 0.60; // Más conservador
-        }
-    }
-
-    private int getMaxFortificationDistance(PlayerMainObjective mainObjective) {
-        switch (mainObjective.objectiveType.toUpperCase()) {
-            case "DESTRUCTION":
-                return 5; // Permite movimientos más largos para concentrar fuerzas
-            case "OCCUPATION":
-                return 4; // Distancia moderada
-            default:
-                return 3; // Más conservador
-        }
-    }
-
-    private int calculateOptimalFortificationForce(int sourceArmies, PlayerMainObjective mainObjective) {
-        int maxMove = sourceArmies - 1;
-
-        switch (mainObjective.objectiveType.toUpperCase()) {
-            case "DESTRUCTION":
-                return Math.max(1, maxMove * 80 / 100); // Mueve 80% de los ejércitos
-            case "OCCUPATION":
-                return Math.max(1, maxMove * 60 / 100); // Mueve 60%
-            default:
-                return Math.max(1, maxMove * 40 / 100); // Mueve 40%
-        }
-    }
-
-    // ===== MÉTODOS DE EJECUCIÓN DE PLANES =====
-
-    private boolean executeAttackPlan(AttackPlan plan, GameEntity game, Long botPlayerId) {
-        try {
-            AttackDto attackDto = new AttackDto();
-            attackDto.setPlayerId(botPlayerId);
-            attackDto.setAttackerCountryId(plan.attackerTerritoryId);
-            attackDto.setDefenderCountryId(plan.targetTerritoryId);
-            attackDto.setAttackingArmies(plan.attackingArmies);
-
-            CombatResultDto result = combatService.performCombat(game.getGameCode(),attackDto);
-            return result != null;
+                        return "Jugador Desconocido";
+                    })
+                    .orElse("Jugador Desconocido");
         } catch (Exception e) {
-            log.error("Error ejecutando ataque: {}", e.getMessage());
-            return false;
-        }
-    }
-
-    private boolean executeFortificationPlan(FortificationPlan plan, GameEntity game, Long botPlayerId) {
-        try {
-            FortifyDto fortifyDto = new FortifyDto();
-            fortifyDto.setPlayerId(botPlayerId);
-            fortifyDto.setFromCountryId(plan.sourceTerritoryId);
-            fortifyDto.setToCountryId(plan.targetTerritoryId);
-            fortifyDto.setArmies(plan.armies);
-
-            return fortificationService.performFortification(game.getGameCode(),fortifyDto);
-        } catch (Exception e) {
-            log.error("Error ejecutando fortificación: {}", e.getMessage());
-            return false;
-        }
-    }
-
-    // ===== ESTRUCTURAS DE DATOS PARA PLANES =====
-
-    private static class AttackPlan {
-        Long attackerTerritoryId;
-        String attackerName;
-        Long targetTerritoryId;
-        String targetName;
-        int attackingArmies;
-        double successProbability;
-        String strategicPurpose;
-        int priority;
-
-        public AttackPlan(Long attackerTerritoryId, String attackerName,
-                          Long targetTerritoryId, String targetName,
-                          int attackingArmies, double successProbability,
-                          String strategicPurpose, int priority) {
-            this.attackerTerritoryId = attackerTerritoryId;
-            this.attackerName = attackerName;
-            this.targetTerritoryId = targetTerritoryId;
-            this.targetName = targetName;
-            this.attackingArmies = attackingArmies;
-            this.successProbability = successProbability;
-            this.strategicPurpose = strategicPurpose;
-            this.priority = priority;
-        }
-    }
-
-    private static class FortificationPlan {
-        Long sourceTerritoryId;
-        String sourceName;
-        Long targetTerritoryId;
-        String targetName;
-        int armies;
-        String purpose;
-        int priority;
-        List<Long> path;
-
-        public FortificationPlan(Long sourceTerritoryId, String sourceName,
-                                 Long targetTerritoryId, String targetName,
-                                 int armies, String purpose, int priority, List<Long> path) {
-            this.sourceTerritoryId = sourceTerritoryId;
-            this.sourceName = sourceName;
-            this.targetTerritoryId = targetTerritoryId;
-            this.targetName = targetName;
-            this.armies = armies;
-            this.purpose = purpose;
-            this.priority = priority;
-            this.path = path != null ? path : new ArrayList<>();
-        }
-    }
-
-    // ===== MÉTODOS AUXILIARES GENERALES =====
-
-    private Map<Long, TerritoryNode> buildGameGraph(GameEntity game, Long playerId) {
-        Map<Long, TerritoryNode> graph = new HashMap<>();
-
-        try {
-            List<Territory> allTerritories = gameTerritoryService.getAllAvailableTerritories();
-
-            for (Territory territory : allTerritories) {
-                TerritoryNode node = new TerritoryNode(territory);
-                graph.put(territory.getId(), node);
-            }
-
-            // Establecer conexiones
-            for (Territory territory : allTerritories) {
-                TerritoryNode node = graph.get(territory.getId());
-                List<Long> neighbors = getNeighborTerritories(territory.getId());
-                node.neighbors.addAll(neighbors);
-            }
-
-        } catch (Exception e) {
-            log.error("Error construyendo grafo del juego: {}", e.getMessage());
-        }
-
-        return graph;
-    }
-
-    private List<Long> findPathToObjective(TerritoryNode target, Map<Long, TerritoryNode> graph, Long playerId) {
-        return findShortestPathToOwnedTerritory(graph, target.territoryId, playerId);
-    }
-
-    private List<Long> findShortestPathToOwnedTerritory(Map<Long, TerritoryNode> graph, Long targetId, Long playerId) {
-        Map<Long, Integer> distances = new HashMap<>();
-        Map<Long, Long> previous = new HashMap<>();
-        PriorityQueue<Long> queue = new PriorityQueue<>(Comparator.comparing(distances::get));
-
-        for (Long id : graph.keySet()) {
-            distances.put(id, Integer.MAX_VALUE);
-        }
-
-        List<Long> ownedTerritories = graph.values().stream()
-                .filter(node -> node.ownerId.equals(playerId))
-                .map(node -> node.territoryId)
-                .collect(Collectors.toList());
-
-        for (Long ownedId : ownedTerritories) {
-            distances.put(ownedId, 0);
-            queue.offer(ownedId);
-        }
-
-        while (!queue.isEmpty()) {
-            Long current = queue.poll();
-
-            if (current.equals(targetId)) {
-                return reconstructPath(previous, current, ownedTerritories);
-            }
-
-            TerritoryNode currentNode = graph.get(current);
-            if (currentNode == null) continue;
-
-            for (Long neighborId : currentNode.neighbors) {
-                int newDistance = distances.get(current) + 1;
-                if (newDistance < distances.get(neighborId)) {
-                    distances.put(neighborId, newDistance);
-                    previous.put(neighborId, current);
-                    queue.offer(neighborId);
-                }
-            }
-        }
-
-        return new ArrayList<>();
-    }
-
-    private List<Long> findShortestPath(Map<Long, TerritoryNode> graph, Long startId, Long endId, Long playerId) {
-        Map<Long, Integer> distances = new HashMap<>();
-        Map<Long, Long> previous = new HashMap<>();
-        PriorityQueue<Long> queue = new PriorityQueue<>(Comparator.comparing(distances::get));
-
-        for (Long id : graph.keySet()) {
-            distances.put(id, Integer.MAX_VALUE);
-        }
-
-        distances.put(startId, 0);
-        queue.offer(startId);
-
-        while (!queue.isEmpty()) {
-            Long current = queue.poll();
-
-            if (current.equals(endId)) {
-                List<Long> path = new ArrayList<>();
-                Long node = endId;
-                while (node != null) {
-                    path.add(0, node);
-                    node = previous.get(node);
-                }
-                return path;
-            }
-
-            TerritoryNode currentNode = graph.get(current);
-            if (currentNode == null) continue;
-
-            for (Long neighborId : currentNode.neighbors) {
-                TerritoryNode neighbor = graph.get(neighborId);
-                if (neighbor != null && neighbor.ownerId.equals(playerId)) {
-                    int newDistance = distances.get(current) + 1;
-                    if (newDistance < distances.get(neighborId)) {
-                        distances.put(neighborId, newDistance);
-                        previous.put(neighborId, current);
-                        queue.offer(neighborId);
-                    }
-                }
-            }
-        }
-
-        return new ArrayList<>();
-    }
-
-    private List<Long> reconstructPath(Map<Long, Long> previous, Long target, List<Long> sources) {
-        List<Long> path = new ArrayList<>();
-        Long current = target;
-
-        while (current != null && !sources.contains(current)) {
-            path.add(0, current);
-            current = previous.get(current);
-        }
-
-        if (current != null) {
-            path.add(0, current);
-        }
-
-        return path;
-    }
-
-    private int estimateConquestCost(TerritoryNode target, Map<Long, TerritoryNode> graph, Long playerId) {
-        return target.armies + 2; // Estimación simple
-    }
-
-    private int evaluateStrategicValue(TerritoryNode node, Map<Long, TerritoryNode> graph, Long playerId) {
-        int value = 0;
-
-        // Valor por número de conexiones
-        value += node.neighbors.size() * 5;
-
-        // Penalizar por ejércitos defensores
-        value -= node.armies * 3;
-
-        // Bonus si está cerca de territorios propios
-        long ownedNeighbors = node.neighbors.stream()
-                .map(graph::get)
-                .filter(Objects::nonNull)
-                .filter(neighbor -> neighbor.ownerId.equals(playerId))
-                .count();
-
-        value += (int) ownedNeighbors * 10;
-
-        return Math.max(0, value);
-    }
-
-    private String determineObjectiveType(TerritoryNode node, Map<Long, TerritoryNode> graph, Long playerId) {
-        if (node.neighbors.size() >= 4) {
-            return "BRIDGE_TERRITORY";
-        } else if (node.armies > 5) {
-            return "ENEMY_STRONGHOLD";
-        } else {
-            return "EXPANSION_TARGET";
-        }
-    }
-
-    private List<AttackPlan> planSecondaryAttacks(Map<Long, TerritoryNode> graph,
-                                                  List<StrategicObjective> objectives,
-                                                  Long playerId) {
-        List<AttackPlan> plans = new ArrayList<>();
-
-        // Buscar objetivos secundarios factibles
-        List<StrategicObjective> secondaryObjectives = objectives.stream()
-                .filter(obj -> !obj.isMainObjective && obj.priority > 20)
-                .limit(3)
-                .collect(Collectors.toList());
-
-        for (StrategicObjective objective : secondaryObjectives) {
-            TerritoryNode target = graph.get(objective.territoryId);
-            if (target == null) continue;
-
-            for (Long neighborId : target.neighbors) {
-                TerritoryNode attacker = graph.get(neighborId);
-                if (attacker != null && attacker.ownerId.equals(playerId) && attacker.armies > 2) {
-                    double probability = evaluateAttackProbability(null, attacker.armies, target.armies);
-
-                    if (probability > 0.50) {
-                        AttackPlan plan = new AttackPlan(
-                                attacker.territoryId, attacker.name,
-                                target.territoryId, target.name,
-                                Math.min(attacker.armies - 1, target.armies + 1),
-                                probability, "Objetivo Secundario: " + objective.type,
-                                objective.priority
-                        );
-                        plans.add(plan);
-                    }
-                }
-            }
-        }
-
-        return plans;
-    }
-
-    private boolean isBorderTerritory(Territory territory, Map<Long, TerritoryNode> graph, Long playerId) {
-        TerritoryNode node = graph.get(territory.getId());
-        if (node == null) return false;
-
-        return node.neighbors.stream()
-                .map(graph::get)
-                .filter(Objects::nonNull)
-                .anyMatch(neighbor -> !neighbor.ownerId.equals(playerId));
-    }
-
-    private Territory findBestAccessToTargetContinent(List<Territory> playerTerritories, PlayerMainObjective mainObjective) {
-        // Implementación simplificada - selecciona territorio con más ejércitos en frontera
-        return playerTerritories.stream()
-                .filter(t -> t.getArmies() > 2)
-                .max(Comparator.comparingInt(Territory::getArmies))
-                .orElse(null);
-    }
-
-    private String getObjectiveStrategyForTerritory(Long territoryId, List<StrategicObjective> objectives, PlayerMainObjective mainObjective) {
-        return objectives.stream()
-                .filter(obj -> obj.territoryId.equals(territoryId))
-                .map(obj -> obj.type)
-                .findFirst()
-                .orElse("Estrategia General");
-    }
-
-    // ===== MÉTODOS QUE NECESITAN IMPLEMENTACIÓN ESPECÍFICA DEL SISTEMA =====
-
-    /**
-     * Obtiene todos los territorios de un continente específico
-     * @param continentName Nombre del continente
-     * @return Lista de territorios del continente
-     */
-    private List<Territory> getContinentTerritories(String continentName) {
-        try {
-            log.debug("Obteniendo territorios del continente: {}", continentName);
-
-            // Obtener todos los territorios disponibles
-            List<Territory> allTerritories = gameTerritoryService.getAllAvailableTerritories();
-
-            // Filtrar por continente
-            List<Territory> continentTerritories = allTerritories.stream()
-                    .filter(territory -> territory.getContinentName() != null &&
-                            territory.getContinentName().equalsIgnoreCase(continentName))
-                    .collect(Collectors.toList());
-
-            log.debug("Encontrados {} territorios en el continente {}",
-                    continentTerritories.size(), continentName);
-
-            return continentTerritories;
-
-        } catch (Exception e) {
-            log.error("Error obteniendo territorios del continente {}: {}", continentName, e.getMessage());
-            return new ArrayList<>();
-        }
-    }
-
-    /** Obtiene los IDs de los territorios vecinos de un territorio específico
-    * @param territoryId ID del territorio
-    * @return Lista de IDs de territorios vecinos
-    */
-    private List<Long> getNeighborTerritories(Long territoryId) {
-        try {
-            log.debug("Obteniendo vecinos del territorio con ID: {}", territoryId);
-
-            // Obtener todos los territorios disponibles
-            List<Territory> allTerritories = gameTerritoryService.getAllAvailableTerritories();
-
-            // Buscar el territorio específico
-            Territory territory = allTerritories.stream()
-                    .filter(t -> t.getId().equals(territoryId))
-                    .findFirst()
-                    .orElse(null);
-
-            if (territory == null) {
-                log.warn("No se encontró territorio con ID: {}", territoryId);
-                return new ArrayList<>();
-            }
-
-            // Obtener los IDs de los vecinos
-            List<Long> neighborIds = new ArrayList<>(territory.getNeighborIds());
-
-            log.debug("Territorio {} tiene {} vecinos: {}",
-                    territory.getName(), neighborIds.size(), neighborIds);
-
-            return neighborIds;
-
-        } catch (Exception e) {
-            log.error("Error obteniendo vecinos del territorio {}: {}", territoryId, e.getMessage());
-            return new ArrayList<>();
+            log.warn("Error obteniendo nombre del jugador {}: {}", playerId, e.getMessage());
+            return "Jugador Desconocido";
         }
     }
 }

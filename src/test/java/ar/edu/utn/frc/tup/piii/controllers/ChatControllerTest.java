@@ -155,4 +155,106 @@ class ChatControllerTest {
                 .andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].id").value("1"));
     }
+
+    // Agrega estos tests a tu clase ChatControllerTest existente
+
+    @Test
+    void sendMessage_InternalServerError_ReturnsInternalServerError() throws Exception {
+        // Given - Simula una excepción genérica (no IllegalArgumentException)
+        when(chatService.sendMessage(eq(gameCode), any(ChatMessageDto.class)))
+                .thenThrow(new RuntimeException("Database error"));
+
+        // When & Then
+        mockMvc.perform(post("/api/games/{gameCode}/chat", gameCode)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(chatMessageDto)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void getNewMessages_NumberFormatException_ReturnsBadRequest() throws Exception {
+        // Given - Simula un NumberFormatException
+        when(chatService.getNewMessages(gameCode, "invalid-number"))
+                .thenThrow(new NumberFormatException("Invalid number format"));
+
+        // When & Then
+        mockMvc.perform(get("/api/games/{gameCode}/chat/new", gameCode)
+                        .param("since", "invalid-number"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getNewMessages_InternalServerError_ReturnsInternalServerError() throws Exception {
+        // Given - Simula una excepción genérica
+        when(chatService.getNewMessages(gameCode, null))
+                .thenThrow(new RuntimeException("Service unavailable"));
+
+        // When & Then
+        mockMvc.perform(get("/api/games/{gameCode}/chat/new", gameCode))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void getAllMessages_IllegalArgumentException_ReturnsBadRequest() throws Exception {
+        // Given - Simula IllegalArgumentException en getAllMessages
+        when(chatService.getNewMessages(gameCode, null))
+                .thenThrow(new IllegalArgumentException("Invalid game code"));
+
+        // When & Then
+        mockMvc.perform(get("/api/games/{gameCode}/chat", gameCode))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getAllMessages_InternalServerError_ReturnsInternalServerError() throws Exception {
+        // Given - Simula excepción genérica en getAllMessages
+        when(chatService.getNewMessages(gameCode, null))
+                .thenThrow(new RuntimeException("Database connection failed"));
+
+        // When & Then
+        mockMvc.perform(get("/api/games/{gameCode}/chat", gameCode))
+                .andExpect(status().isInternalServerError());
+    }
+
+    @Test
+    void sendMessage_ValidationError_ReturnsBadRequest() throws Exception {
+        // Given - DTO inválido (contenido vacío)
+        ChatMessageDto invalidDto = new ChatMessageDto();
+        invalidDto.setSenderId(null); // Asumiendo que senderId es requerido
+        invalidDto.setContent(""); // Contenido vacío
+        invalidDto.setGameId(null); // GameId nulo
+
+        // When & Then
+        mockMvc.perform(post("/api/games/{gameCode}/chat", gameCode)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidDto)))
+                .andExpect(status().isBadRequest());
+    }
+
+    // Test adicional para asegurar que el response body es null en casos de error
+    @Test
+    void sendMessage_Error_ReturnsNullBody() throws Exception {
+        // Given
+        when(chatService.sendMessage(eq(gameCode), any(ChatMessageDto.class)))
+                .thenThrow(new IllegalArgumentException("Game not found"));
+
+        // When & Then
+        mockMvc.perform(post("/api/games/{gameCode}/chat", gameCode)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(chatMessageDto)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(""));
+    }
+
+    @Test
+    void getNewMessages_Error_ReturnsNullBody() throws Exception {
+        // Given
+        when(chatService.getNewMessages(gameCode, null))
+                .thenThrow(new IllegalArgumentException("Game not found"));
+
+        // When & Then
+        mockMvc.perform(get("/api/games/{gameCode}/chat/new", gameCode))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().string(""));
+    }
 }

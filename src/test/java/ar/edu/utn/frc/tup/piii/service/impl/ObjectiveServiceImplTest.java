@@ -13,22 +13,20 @@ import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import ar.edu.utn.frc.tup.piii.repository.ObjectiveRepository;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameTerritoryService;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.*;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
-public class ObjectiveServiceImplTest {
-
-    @InjectMocks
-    private ObjectiveServiceImpl objectiveService;
+@ExtendWith(MockitoExtension.class)
+class ObjectiveServiceImplTest {
 
     @Mock
     private ObjectiveRepository objectiveRepository;
@@ -45,20 +43,48 @@ public class ObjectiveServiceImplTest {
     @Mock
     private GameTerritoryService gameTerritoryService;
 
+    @InjectMocks
+    private ObjectiveServiceImpl objectiveService;
+
     private Objective objective;
     private ObjectiveEntity objectiveEntity;
+    private Game game;
+    private GameEntity gameEntity;
+    private Player player;
+    private PlayerEntity playerEntity;
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-
-        objective = new Objective();
-        objective.setId(1L);
-        objective.setType(ObjectiveType.COMMON);
+        objective = Objective.builder()
+                .id(1L)
+                .type(ObjectiveType.COMMON)
+                .description("Test objective")
+                .build();
 
         objectiveEntity = new ObjectiveEntity();
         objectiveEntity.setId(1L);
         objectiveEntity.setType(ObjectiveType.COMMON);
+        objectiveEntity.setDescription("Test objective");
+
+        player = Player.builder()
+                .id(1L)
+                .username("testPlayer")
+                .color(PlayerColor.RED)
+                .status(PlayerStatus.ACTIVE)
+                .build();
+
+        playerEntity = new PlayerEntity();
+        playerEntity.setId(1L);
+
+        game = Game.builder()
+                .id(1L)
+                .gameCode("TEST123")
+                .players(Arrays.asList(player))
+                .build();
+
+        gameEntity = new GameEntity();
+        gameEntity.setId(1L);
+        gameEntity.setGameCode("TEST123");
     }
 
     @Test
@@ -69,8 +95,8 @@ public class ObjectiveServiceImplTest {
 
         Objective saved = objectiveService.save(objective);
 
-        assertNotNull(saved);
-        assertEquals(ObjectiveType.COMMON, saved.getType());
+        assertThat(saved).isNotNull();
+        assertThat(saved.getType()).isEqualTo(ObjectiveType.COMMON);
         verify(objectiveRepository).save(objectiveEntity);
     }
 
@@ -81,8 +107,8 @@ public class ObjectiveServiceImplTest {
 
         Optional<Objective> result = objectiveService.findById(1L);
 
-        assertTrue(result.isPresent());
-        assertEquals(ObjectiveType.COMMON, result.get().getType());
+        assertThat(result).isPresent();
+        assertThat(result.get().getType()).isEqualTo(ObjectiveType.COMMON);
     }
 
     @Test
@@ -91,84 +117,269 @@ public class ObjectiveServiceImplTest {
 
         Optional<Objective> result = objectiveService.findById(99L);
 
-        assertFalse(result.isPresent());
+        assertThat(result).isEmpty();
     }
 
     @Test
     void testFindByType() {
-        List<ObjectiveEntity> entityList = List.of(objectiveEntity);
-        List<Objective> modelList = List.of(objective);
-
+        List<ObjectiveEntity> entityList = Arrays.asList(objectiveEntity);
         when(objectiveRepository.findByType(ObjectiveType.COMMON)).thenReturn(entityList);
         when(objectiveMapper.toModel(objectiveEntity)).thenReturn(objective);
 
         List<Objective> result = objectiveService.findByType(ObjectiveType.COMMON);
 
-        assertEquals(1, result.size());
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getType()).isEqualTo(ObjectiveType.COMMON);
         verify(objectiveRepository).findByType(ObjectiveType.COMMON);
     }
 
     @Test
     void testValidateCommonObjective_Valid() {
-        Player player = new Player();
-        PlayerEntity playerEntity = new PlayerEntity();
-
         when(playerMapper.toEntity(player)).thenReturn(playerEntity);
         when(gameTerritoryService.countWithMinArmies(playerEntity, 2)).thenReturn(20L);
 
-        boolean result = objectiveService.validateObjectiveCompletion(objective, new Game(), player);
+        boolean result = objectiveService.validateObjectiveCompletion(objective, game, player);
 
-        assertTrue(result);
+        assertThat(result).isTrue();
+        verify(gameTerritoryService).countWithMinArmies(playerEntity, 2);
+    }
+
+    @Test
+    void testValidateCommonObjective_Invalid() {
+        when(playerMapper.toEntity(player)).thenReturn(playerEntity);
+        when(gameTerritoryService.countWithMinArmies(playerEntity, 2)).thenReturn(10L);
+
+        boolean result = objectiveService.validateObjectiveCompletion(objective, game, player);
+
+        assertThat(result).isFalse();
     }
 
     @Test
     void testValidateDestructionObjective_Valid() {
-        Player p1 = Player.builder().color(PlayerColor.BLUE).status(PlayerStatus.ELIMINATED).build();
-        Player p2 = Player.builder().color(PlayerColor.BLUE).status(PlayerStatus.ELIMINATED).build();
-        Game game = new Game();
-        game.setPlayers(List.of(p1, p2));
+        Player eliminatedPlayer = Player.builder()
+                .color(PlayerColor.BLUE)
+                .status(PlayerStatus.ELIMINATED)
+                .build();
 
-        objective.setType(ObjectiveType.DESTRUCTION);
-        objective.setTargetColor(PlayerColor.BLUE);
+        Game gameWithEliminated = Game.builder()
+                .players(Arrays.asList(player, eliminatedPlayer))
+                .build();
 
-        boolean result = objectiveService.validateObjectiveCompletion(objective, game, null);
+        Objective destructionObjective = Objective.builder()
+                .type(ObjectiveType.DESTRUCTION)
+                .targetData("BLUE")
+                .build();
 
-        assertTrue(result);
+        boolean result = objectiveService.validateObjectiveCompletion(destructionObjective, gameWithEliminated, player);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void testValidateDestructionObjective_Invalid() {
+        Player activePlayer = Player.builder()
+                .color(PlayerColor.BLUE)
+                .status(PlayerStatus.ACTIVE)
+                .build();
+
+        Game gameWithActive = Game.builder()
+                .players(Arrays.asList(player, activePlayer))
+                .build();
+
+        Objective destructionObjective = Objective.builder()
+                .type(ObjectiveType.DESTRUCTION)
+                .targetData("BLUE")
+                .build();
+
+        boolean result = objectiveService.validateObjectiveCompletion(destructionObjective, gameWithActive, player);
+
+        assertThat(result).isFalse();
     }
 
     @Test
     void testValidateOccupationObjective_Valid() {
-        Game game = new Game();
-        Player player = new Player();
-        Objective occupationObjective = new Objective();
-        occupationObjective.setType(ObjectiveType.OCCUPATION);
-        occupationObjective.setTargetContinents(List.of("South America"));
+        Objective occupationObjective = Objective.builder()
+                .type(ObjectiveType.OCCUPATION)
+                .targetData("South America,North America")
+                .build();
 
-        GameEntity gameEntity = new GameEntity();
-        PlayerEntity playerEntity = new PlayerEntity();
         GameTerritoryEntity t1 = new GameTerritoryEntity();
-        GameTerritoryEntity t2 = new GameTerritoryEntity();
         t1.setOwner(playerEntity);
+        GameTerritoryEntity t2 = new GameTerritoryEntity();
         t2.setOwner(playerEntity);
 
         when(gameMapper.toEntity(game)).thenReturn(gameEntity);
         when(playerMapper.toEntity(player)).thenReturn(playerEntity);
-        when(gameTerritoryService.getByContinent(gameEntity, "South America")).thenReturn(List.of(t1, t2));
+        when(gameTerritoryService.getByContinent(gameEntity, "South America")).thenReturn(Arrays.asList(t1));
+        when(gameTerritoryService.getByContinent(gameEntity, "North America")).thenReturn(Arrays.asList(t2));
 
         boolean result = objectiveService.validateObjectiveCompletion(occupationObjective, game, player);
 
-        assertTrue(result);
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void testValidateOccupationObjective_Invalid() {
+        Objective occupationObjective = Objective.builder()
+                .type(ObjectiveType.OCCUPATION)
+                .targetData("South America")
+                .build();
+
+        PlayerEntity otherPlayer = new PlayerEntity();
+        otherPlayer.setId(2L);
+
+        GameTerritoryEntity t1 = new GameTerritoryEntity();
+        t1.setOwner(playerEntity);
+        GameTerritoryEntity t2 = new GameTerritoryEntity();
+        t2.setOwner(otherPlayer);
+
+        when(gameMapper.toEntity(game)).thenReturn(gameEntity);
+        when(playerMapper.toEntity(player)).thenReturn(playerEntity);
+        when(gameTerritoryService.getByContinent(gameEntity, "South America")).thenReturn(Arrays.asList(t1, t2));
+
+        boolean result = objectiveService.validateObjectiveCompletion(occupationObjective, game, player);
+
+        assertThat(result).isFalse();
     }
 
     @Test
     void testGetCommonObjectives() {
-        List<ObjectiveEntity> list = List.of(objectiveEntity);
-
-        when(objectiveRepository.findByType(ObjectiveType.COMMON)).thenReturn(list);
+        List<ObjectiveEntity> entities = Arrays.asList(objectiveEntity);
+        when(objectiveRepository.findByType(ObjectiveType.COMMON)).thenReturn(entities);
         when(objectiveMapper.toModel(objectiveEntity)).thenReturn(objective);
 
         List<Objective> result = objectiveService.getCommonObjectives();
 
-        assertEquals(1, result.size());
+        assertThat(result).hasSize(1);
+        verify(objectiveRepository).findByType(ObjectiveType.COMMON);
+    }
+
+    @Test
+    void testGetOccupationObjectives() {
+        List<ObjectiveEntity> entities = Arrays.asList(objectiveEntity);
+        when(objectiveRepository.findByType(ObjectiveType.OCCUPATION)).thenReturn(entities);
+        when(objectiveMapper.toModel(objectiveEntity)).thenReturn(objective);
+
+        List<Objective> result = objectiveService.getOccupationObjectives();
+
+        assertThat(result).hasSize(1);
+        verify(objectiveRepository).findByType(ObjectiveType.OCCUPATION);
+    }
+
+    @Test
+    void testGetDestructionObjectives() {
+        List<ObjectiveEntity> entities = Arrays.asList(objectiveEntity);
+        when(objectiveRepository.findByType(ObjectiveType.DESTRUCTION)).thenReturn(entities);
+        when(objectiveMapper.toModel(objectiveEntity)).thenReturn(objective);
+
+        List<Objective> result = objectiveService.getDestructionObjectives();
+
+        assertThat(result).hasSize(1);
+        verify(objectiveRepository).findByType(ObjectiveType.DESTRUCTION);
+    }
+
+    @Test
+    void testFindAll() {
+        List<ObjectiveEntity> entities = Arrays.asList(objectiveEntity);
+        when(objectiveRepository.findAll()).thenReturn(entities);
+        when(objectiveMapper.toModel(objectiveEntity)).thenReturn(objective);
+
+        List<Objective> result = objectiveService.findAll();
+
+        assertThat(result).hasSize(1);
+        verify(objectiveRepository).findAll();
+    }
+
+    @Test
+    void testDeleteById() {
+        objectiveService.deleteById(1L);
+
+        verify(objectiveRepository).deleteById(1L);
+    }
+
+    @Test
+    void testCreateObjectivesForGame() {
+        List<ObjectiveEntity> entities = Arrays.asList(objectiveEntity);
+        when(objectiveRepository.findAll()).thenReturn(entities);
+        when(objectiveMapper.toModel(objectiveEntity)).thenReturn(objective);
+
+        List<Objective> result = objectiveService.createObjectivesForGame(game);
+
+        assertThat(result).hasSize(1);
+    }
+
+    @Test
+    void testIsObjectiveAchieved() {
+        when(objectiveRepository.findById(1L)).thenReturn(Optional.of(objectiveEntity));
+        when(objectiveMapper.toModel(objectiveEntity)).thenReturn(objective);
+        when(playerMapper.toEntity(player)).thenReturn(playerEntity);
+        when(gameTerritoryService.countWithMinArmies(playerEntity, 2)).thenReturn(20L);
+
+        boolean result = objectiveService.isObjectiveAchieved(1L, game, player);
+
+        assertThat(result).isTrue();
+    }
+
+    @Test
+    void testIsObjectiveAchieved_ObjectiveNotFound() {
+        when(objectiveRepository.findById(999L)).thenReturn(Optional.empty());
+
+        boolean result = objectiveService.isObjectiveAchieved(999L, game, player);
+
+        assertThat(result).isFalse();
+    }
+
+    @Test
+    void testFindWinner() {
+        Player playerWithObjective = Player.builder()
+                .id(1L)
+                .objective(objective)
+                .build();
+
+        Game gameWithWinner = Game.builder()
+                .players(Arrays.asList(playerWithObjective))
+                .build();
+
+        when(playerMapper.toEntity(playerWithObjective)).thenReturn(playerEntity);
+        when(gameTerritoryService.countWithMinArmies(playerEntity, 2)).thenReturn(20L);
+
+        Optional<Player> winner = objectiveService.findWinner(gameWithWinner);
+
+        assertThat(winner).isPresent();
+        assertThat(winner.get().getId()).isEqualTo(1L);
+    }
+
+    @Test
+    void testFindWinner_NoWinner() {
+        Player playerWithoutObjective = Player.builder()
+                .id(1L)
+                .objective(null)
+                .build();
+
+        Game gameWithoutWinner = Game.builder()
+                .players(Arrays.asList(playerWithoutObjective))
+                .build();
+
+        Optional<Player> winner = objectiveService.findWinner(gameWithoutWinner);
+
+        assertThat(winner).isEmpty();
+    }
+
+    @Test
+    void testGetObjectiveProgress() {
+        String progress = objectiveService.getObjectiveProgress(1L, game, player);
+
+        assertThat(progress).isEqualTo("Progress tracking not implemented yet");
+    }
+
+    @Test
+    void testAssignObjectivesToPlayers() {
+        List<ObjectiveEntity> entities = Arrays.asList(objectiveEntity);
+        when(objectiveRepository.findAll()).thenReturn(entities);
+        when(objectiveMapper.toModel(objectiveEntity)).thenReturn(objective);
+
+        objectiveService.assignObjectivesToPlayers(game);
+
+        assertThat(game.getPlayers().get(0).getObjective()).isEqualTo(objective);
     }
 }

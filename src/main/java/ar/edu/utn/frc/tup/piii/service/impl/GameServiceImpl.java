@@ -6,9 +6,11 @@ import ar.edu.utn.frc.tup.piii.entities.*;
 import ar.edu.utn.frc.tup.piii.exceptions.*;
 import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
 import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.model.Territory;
 import ar.edu.utn.frc.tup.piii.model.enums.*;
 import ar.edu.utn.frc.tup.piii.repository.*;
 import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
+import ar.edu.utn.frc.tup.piii.service.interfaces.GameTerritoryService;
 import ar.edu.utn.frc.tup.piii.service.interfaces.UserService;
 import ar.edu.utn.frc.tup.piii.utils.CodeGenerator;
 import ar.edu.utn.frc.tup.piii.utils.ColorManager;
@@ -45,6 +47,8 @@ public class GameServiceImpl implements GameService {
 
     @Autowired
     private UserService userService;
+    @Autowired
+    private GameTerritoryService gameTerritoryService;
 
     @Override
     public Game findById(Long gameId) {
@@ -280,6 +284,7 @@ public class GameServiceImpl implements GameService {
         gameEntity.setTurnTimeLimit(120);
         gameEntity.setChatEnabled(true);
         gameEntity.setPactsAllowed(false);
+        gameEntity.setCurrentPhase(TurnPhase.REINFORCEMENT);
         return gameEntity;
     }
 
@@ -600,4 +605,6 @@ public class GameServiceImpl implements GameService {
         playerRepository.save(player);
         return gameMapper.toModel(gameEntity);
     }
+
+
 }

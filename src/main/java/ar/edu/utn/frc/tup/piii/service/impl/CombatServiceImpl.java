@@ -50,7 +50,7 @@ public class CombatServiceImpl implements CombatService {
         validateAttack(game, attackDto, attackerTerritory, defenderTerritory);
 
         // determinar cantidad de dados
-        int attackerDiceCount = determineAttackerDice(attackerTerritory, attackDto.getAttackingArmies());
+        int attackerDiceCount = determineAttackerDice(attackerTerritory);
         int defenderDiceCount = determineDefenderDice(defenderTerritory);
 
         // tirar dados
@@ -112,8 +112,15 @@ public class CombatServiceImpl implements CombatService {
     }
 
 
-    private int determineAttackerDice(Territory attacker, int attackingArmies) {
-        return Math.min(3, attackingArmies);
+    private int determineAttackerDice(Territory attacker) {
+        int availableArmies = attacker.getArmies() - 1; // Debe dejar 1 ejército
+
+        if (availableArmies <= 0) {
+            throw new IllegalArgumentException("Territory must have more than 1 army to attack");
+        }
+
+        // Máximo 3 dados, limitado por ejércitos disponibles
+        return Math.min(3, availableArmies);
     }
 
 
@@ -186,11 +193,11 @@ public class CombatServiceImpl implements CombatService {
 
             // Transferir  territorio
             gameTerritoryService.transferTerritoryOwnership(
-                    gameId, attackDto.getDefenderCountryId(), attackDto.getPlayerId(), armiesToMove);
+                    gameId, attackDto.getDefenderCountryId(), attackDto.getPlayerId(), 1);
 
             // Reducir armis del territorio atacante
             gameTerritoryService.addArmiesToTerritory(
-                    gameId, attackDto.getAttackerCountryId(), -armiesToMove);
+                    gameId, attackDto.getAttackerCountryId(), -1);
 
             /*
             // Registrar el turno de conquista

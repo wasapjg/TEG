@@ -2,6 +2,8 @@ package ar.edu.utn.frc.tup.piii.controllers;
 
 import ar.edu.utn.frc.tup.piii.dtos.card.CardResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.card.CardTradeDto;
+import ar.edu.utn.frc.tup.piii.dtos.card.GiveCardDto;
+import ar.edu.utn.frc.tup.piii.exceptions.PlayerNotFoundException;
 import ar.edu.utn.frc.tup.piii.model.Card;
 import ar.edu.utn.frc.tup.piii.model.Game;
 import ar.edu.utn.frc.tup.piii.model.Player;
@@ -38,6 +40,50 @@ public class CardController {
 
     @Autowired
     private CardService cardService;
+
+    @Autowired
+    private PlayerService playerService;
+
+    @Autowired
+    private GameService gameService;
+
+    @PostMapping("/give-card")
+    @Operation(summary = "Entregar carta a jugador",
+            description = "Entrega una carta aleatoria del mazo a un jugador específico")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Carta entregada exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = CardResponseDto.class))),
+            @ApiResponse(responseCode = "404",
+                    description = "Jugador o juego no encontrado",
+                    content = @Content),
+            @ApiResponse(responseCode = "400",
+                    description = "No hay cartas disponibles en el mazo",
+                    content = @Content)
+    })
+    public ResponseEntity<CardResponseDto> giveCardToPlayer(
+            @Valid @RequestBody GiveCardDto giveCardDto) {
+
+        // Obtener el juego
+        Game game = gameService.findByGameCode(giveCardDto.getGameCode());
+
+        // Obtener el jugador
+        Player player = playerService.findById(giveCardDto.getPlayerId())
+                .orElseThrow(() -> new PlayerNotFoundException("Player not found"));
+
+        // Entregar carta
+        Card drawnCard = cardService.drawCard(game, player);
+
+        // Convertir a DTO de respuesta
+        CardResponseDto responseDto = CardResponseDto.builder()
+                .id(drawnCard.getId())
+                .countryName(drawnCard.getCountryName())
+                .type(drawnCard.getType())
+                .build();
+
+        return ResponseEntity.ok(responseDto);
+    }
 
 
     /**

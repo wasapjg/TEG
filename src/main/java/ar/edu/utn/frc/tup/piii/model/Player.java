@@ -1,5 +1,6 @@
 package ar.edu.utn.frc.tup.piii.model;
 
+import ar.edu.utn.frc.tup.piii.entities.BotProfileEntity;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerColor;
 import ar.edu.utn.frc.tup.piii.model.enums.PlayerStatus;
 import ar.edu.utn.frc.tup.piii.model.enums.BotLevel;
@@ -23,6 +24,7 @@ public class Player {
     private String displayName;
     private Boolean isBot;
     private BotLevel botLevel;
+    private BotProfileEntity botProfile;
     private PlayerStatus status;
     private PlayerColor color;
     private Integer armiesToPlace;

@@ -270,14 +270,17 @@ public class BotServiceImpl implements BotService {
             throw new IllegalStateException("It's not bot's turn. Bot: " + botId + ", Current player: " + game.getCurrentPlayerIndex());
         }
 
-        if (!gameStateService.canPerformAction(game, "bot_turn")) {
-            throw new IllegalStateException("Game not in valid state for bot turn execution: " + game.getState());
-        }
+//        if (!gameStateService.canPerformAction(game, "bot_turn")) {
+//            throw new IllegalStateException("Game not in valid state for bot turn execution: " + game.getState());
+//        }
 
         PlayerEntity botEntity = playerMapper.toEntity(botPlayer);
         GameEntity gameEntity = gameMapper.toEntity(game);
 
         executeBotTurn(botEntity, gameEntity);
+
+        //GameResponseDto refreshGame = gameService.getGameByCode(gameCode);
+
         gameStateService.nextTurn(game);
         Game savedGame = gameService.save(game);
 

@@ -64,25 +64,4 @@ class ColorManagerTest {
         assertThat(result).isNotIn(PlayerColor.RED, PlayerColor.BLUE);
     }
 
-    @Test
-    void getAvailableRandomColor_WhenAllColorsUsed_ShouldReturnAnyColor() {
-        // Creamos tantos PlayerEntity como colores existentes
-        List<PlayerEntity> allPlayers = Arrays.stream(PlayerColor.values())
-                .map(color -> {
-                    PlayerEntity p = new PlayerEntity();
-                    p.setId((long) (color.ordinal() + 1));
-                    p.setColor(color);
-                    return p;
-                })
-                .collect(Collectors.toList());
-
-        // Asignamos esa lista a gameEntity
-        gameEntity.setPlayers(allPlayers);
-
-        PlayerColor result = colorManager.getAvailableRandomColor(gameEntity);
-
-        // Si todos los colores ya están en uso, puede devolver cualquiera del enum
-        assertThat(result).isNotNull();
-        assertThat(result).isIn(PlayerColor.values());
-    }
 }

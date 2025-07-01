@@ -2,13 +2,22 @@ package ar.edu.utn.frc.tup.piii.service.impl;
 
 import ar.edu.utn.frc.tup.piii.FactoryBots.BotStrategyExecutor;
 import ar.edu.utn.frc.tup.piii.FactoryBots.BotStrategyFactory;
+import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
 import ar.edu.utn.frc.tup.piii.entities.BotProfileEntity;
 import ar.edu.utn.frc.tup.piii.entities.CountryEntity;
 import ar.edu.utn.frc.tup.piii.entities.GameEntity;
 import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
+import ar.edu.utn.frc.tup.piii.mappers.GameMapper;
+import ar.edu.utn.frc.tup.piii.mappers.PlayerMapper;
+import ar.edu.utn.frc.tup.piii.model.Game;
+import ar.edu.utn.frc.tup.piii.model.Player;
 import ar.edu.utn.frc.tup.piii.model.enums.BotLevel;
 import ar.edu.utn.frc.tup.piii.model.enums.BotStrategy;
+import ar.edu.utn.frc.tup.piii.model.enums.GameState;
 import ar.edu.utn.frc.tup.piii.repository.BotProfileRepository;
+import ar.edu.utn.frc.tup.piii.service.interfaces.GameService;
+import ar.edu.utn.frc.tup.piii.service.interfaces.GameStateService;
+import ar.edu.utn.frc.tup.piii.service.interfaces.PlayerService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +44,21 @@ class BotServiceImplTest {
     @Mock
     private BotProfileRepository botProfileRepository;
 
+    @Mock
+    private PlayerService playerService;
+
+    @Mock
+    private GameService gameService;
+
+    @Mock
+    private GameStateService gameStateService;
+
+    @Mock
+    private GameMapper gameMapper;
+
+    @Mock
+    private PlayerMapper playerMapper;
+
     @InjectMocks
     private BotServiceImpl botService;
 
@@ -42,24 +66,45 @@ class BotServiceImplTest {
     private PlayerEntity humanPlayer;
     private GameEntity game;
     private BotProfileEntity botProfile;
+    private Player botPlayerModel;
+    private Game gameModel;
+    private GameResponseDto gameResponseDto;
 
     @BeforeEach
     void setUp() {
-        // Setup bot player
-        botPlayer = new PlayerEntity();
         botProfile = new BotProfileEntity();
+        botProfile.setId(1L);
         botProfile.setBotName("TestBot");
         botProfile.setLevel(BotLevel.BALANCED);
         botProfile.setStrategy(BotStrategy.AGGRESSIVE);
+
+        botPlayer = new PlayerEntity();
+        botPlayer.setId(1L);
         botPlayer.setBotProfile(botProfile);
 
-        // Setup human player (no bot profile)
         humanPlayer = new PlayerEntity();
+        humanPlayer.setId(2L);
         humanPlayer.setBotProfile(null);
 
-        // Setup game
         game = new GameEntity();
+        game.setId(1L);
         game.setGameCode("TEST-GAME");
+        game.setStatus(GameState.NORMAL_PLAY);
+        game.setCurrentPlayerIndex(0);
+
+        botPlayerModel = new Player();
+        botPlayerModel.setId(1L);
+        botPlayerModel.setIsBot(true);
+
+        gameModel = new Game();
+        gameModel.setId(1L);
+        gameModel.setGameCode("TEST-GAME");
+        gameModel.setState(GameState.NORMAL_PLAY);
+        gameModel.setCurrentPlayerIndex(0);
+
+        gameResponseDto = new GameResponseDto();
+        gameResponseDto.setId(1L);
+        gameResponseDto.setGameCode("TEST-GAME");
     }
 
     @Test
@@ -132,7 +177,6 @@ class BotServiceImplTest {
         assertEquals(expectedList, result);
     }
 
-    // Tests para excepciones cuando no es bot
     @Test
     void testExecuteBotTurn_ThrowsExceptionWhenNotBot() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
@@ -166,7 +210,6 @@ class BotServiceImplTest {
         assertEquals("Player is not a bot: " + humanPlayer.getId(), exception.getMessage());
     }
 
-    // Tests para getBestDefensePositions
     @Test
     void testGetBestDefensePositions() {
         List<CountryEntity> mockDefensePositions = Arrays.asList(new CountryEntity(), new CountryEntity());
@@ -180,7 +223,6 @@ class BotServiceImplTest {
         verify(botStrategyExecutor).getBestDefensePositions(botPlayer, game);
     }
 
-    // Tests para shouldBotAttack
     @Test
     void testShouldBotAttack_WithTargets() {
         List<CountryEntity> mockTargets = Arrays.asList(new CountryEntity());
@@ -210,12 +252,11 @@ class BotServiceImplTest {
         assertFalse(result);
     }
 
-    // Tests para shouldBotFortify
     @Test
     void testShouldBotFortify_WithBotPlayer() {
         boolean result = botService.shouldBotFortify(botPlayer, game);
 
-        assertTrue(result); // Los bots siempre intentan fortificar según la implementación
+        assertTrue(result);
     }
 
     @Test
@@ -225,7 +266,6 @@ class BotServiceImplTest {
         assertFalse(result);
     }
 
-    // Tests para findAll
     @Test
     void testFindAll() {
         List<BotProfileEntity> expectedList = Arrays.asList(new BotProfileEntity(), new BotProfileEntity());
@@ -246,7 +286,6 @@ class BotServiceImplTest {
         assertFalse(result.isPresent());
     }
 
-    // Tests para utilidades
     @Test
     void testIsValidBot_ValidBot() {
         boolean result = botService.isValidBot(botPlayer);
@@ -301,7 +340,6 @@ class BotServiceImplTest {
         assertEquals("Unknown Bot", result);
     }
 
-    // Tests para manejo de excepciones en executeBotTurn
     @Test
     void testExecuteBotTurn_HandlesExecutorException() {
         when(botStrategyFactory.getExecutor(botProfile)).thenReturn(botStrategyExecutor);
@@ -314,47 +352,132 @@ class BotServiceImplTest {
         assertEquals("Strategy execution failed", exception.getCause().getMessage());
     }
 
-    // Tests para casos edge en evaluateAttackProbability
     @Test
     void testEvaluateAttackProbability_EdgeCases() {
         when(botStrategyFactory.getExecutor(botProfile)).thenReturn(botStrategyExecutor);
 
-        // Test con 0 ejércitos atacantes
         when(botStrategyExecutor.evaluateAttackProbability(botPlayer, 0, 5)).thenReturn(0.0);
         double result1 = botService.evaluateAttackProbability(botPlayer, 0, 5);
         assertEquals(0.0, result1);
 
-        // Test con muchos ejércitos atacantes
         when(botStrategyExecutor.evaluateAttackProbability(botPlayer, 100, 1)).thenReturn(0.99);
         double result2 = botService.evaluateAttackProbability(botPlayer, 100, 1);
         assertEquals(0.99, result2);
     }
 
-    // Tests para verificar que se llama al factory correctamente
     @Test
     void testFactoryInteractions() {
         when(botStrategyFactory.getExecutor(botProfile)).thenReturn(botStrategyExecutor);
 
-        // Ejecutar varios métodos que usan el factory
         botService.executeBotTurn(botPlayer, game);
         botService.evaluateAttackProbability(botPlayer, 5, 3);
         botService.getBestAttackTargets(botPlayer, game);
         botService.getBestDefensePositions(botPlayer, game);
 
-        // Verificar que se llamó al factory las veces correctas
         verify(botStrategyFactory, times(4)).getExecutor(botProfile);
     }
 
-    // Test para verificar logging (si usas captura de logs)
     @Test
     void testExecuteBotTurn_LoggingBehavior() {
         when(botStrategyFactory.getExecutor(botProfile)).thenReturn(botStrategyExecutor);
 
-        // Este test verificaría que se loggea correctamente
-        // Necesitarías configurar un appender para capturar logs si quieres testear esto
         botService.executeBotTurn(botPlayer, game);
 
-        // Verificar que se ejecutó sin errores (implica que el logging funcionó)
         verify(botStrategyExecutor).executeTurn(botPlayer, game);
     }
+
+    @Test
+    void testExecuteBotTurnComplete_WithValidBot_ShouldExecuteSuccessfully() {
+        String gameCode = "TEST-GAME";
+        Long botId = 1L;
+
+        when(playerService.findById(botId)).thenReturn(Optional.of(botPlayerModel));
+        when(gameService.findByGameCode(gameCode)).thenReturn(gameModel);
+        when(gameStateService.isPlayerTurn(gameModel, botId)).thenReturn(true);
+        when(gameStateService.canPerformAction(gameModel, "bot_turn")).thenReturn(true);
+        when(playerMapper.toEntity(botPlayerModel)).thenReturn(botPlayer);
+        when(gameMapper.toEntity(gameModel)).thenReturn(game);
+        when(botStrategyFactory.getExecutor(botProfile)).thenReturn(botStrategyExecutor);
+        doNothing().when(botStrategyExecutor).executeTurn(botPlayer, game);
+        doNothing().when(gameStateService).nextTurn(gameModel);
+        when(gameService.save(gameModel)).thenReturn(gameModel);
+        when(gameMapper.toResponseDto(gameModel)).thenReturn(gameResponseDto);
+
+        GameResponseDto result = botService.executeBotTurnComplete(gameCode, botId);
+
+        assertNotNull(result);
+        verify(gameStateService).nextTurn(gameModel);
+        verify(gameService).save(gameModel);
+        verify(botStrategyExecutor).executeTurn(botPlayer, game);
+    }
+
+    @Test
+    void testExecuteBotTurnComplete_WithNonBotPlayer_ShouldThrowException() {
+        String gameCode = "TEST-GAME";
+        Long playerId = 1L;
+
+        Player humanPlayerModel = new Player();
+        humanPlayerModel.setId(playerId);
+        humanPlayerModel.setIsBot(false);
+
+        when(playerService.findById(playerId)).thenReturn(Optional.of(humanPlayerModel));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> botService.executeBotTurnComplete(gameCode, playerId));
+
+        assertEquals("Bot not found or not a bot with ID: " + playerId, exception.getMessage());
+
+        verify(gameService, never()).findByGameCode(anyString());
+        verify(gameStateService, never()).isPlayerTurn(any(), any());
+    }
+
+    @Test
+    void testExecuteBotTurnComplete_WithPlayerNotFound_ShouldThrowException() {
+        String gameCode = "TEST-GAME";
+        Long botId = 999L;
+
+        when(playerService.findById(botId)).thenReturn(Optional.empty());
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> botService.executeBotTurnComplete(gameCode, botId));
+
+        assertEquals("Bot not found or not a bot with ID: " + botId, exception.getMessage());
+    }
+
+    @Test
+    void testExecuteBotTurnComplete_WithNotPlayerTurn_ShouldThrowException() {
+        String gameCode = "TEST-GAME";
+        Long botId = 1L;
+
+        when(playerService.findById(botId)).thenReturn(Optional.of(botPlayerModel));
+        when(gameService.findByGameCode(gameCode)).thenReturn(gameModel);
+        when(gameStateService.isPlayerTurn(gameModel, botId)).thenReturn(false);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> botService.executeBotTurnComplete(gameCode, botId));
+
+        assertTrue(exception.getMessage().contains("It's not bot's turn"));
+
+        verify(gameStateService, never()).canPerformAction(any(), anyString());
+        verify(gameService, never()).save(any());
+    }
+
+    @Test
+    void testExecuteBotTurnComplete_WithInvalidGameState_ShouldThrowException() {
+        String gameCode = "TEST-GAME";
+        Long botId = 1L;
+
+        when(playerService.findById(botId)).thenReturn(Optional.of(botPlayerModel));
+        when(gameService.findByGameCode(gameCode)).thenReturn(gameModel);
+        when(gameStateService.isPlayerTurn(gameModel, botId)).thenReturn(true);
+        when(gameStateService.canPerformAction(gameModel, "bot_turn")).thenReturn(false);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> botService.executeBotTurnComplete(gameCode, botId));
+
+        assertTrue(exception.getMessage().contains("Game not in valid state for bot turn execution"));
+
+        verify(gameService, never()).save(any());
+    }
+
 }

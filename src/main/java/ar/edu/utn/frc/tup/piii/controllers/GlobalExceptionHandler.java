@@ -112,4 +112,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorApi);
     }
 
+
+    @ExceptionHandler(PlayerNotFoundException.class)
+    public ResponseEntity<String> handlePlayerNotFound(PlayerNotFoundException ex) {
+            return ResponseEntity.notFound().build();
+    }
+
+
 }

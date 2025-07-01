@@ -153,7 +153,7 @@ public class TurnManagementController {
             validatePlayerTurn(game, playerId);
 
             // Validar que está en fase de fin de turno
-            if (game.getCurrentPhase() != TurnPhase.END_TURN) {
+            if (game.getCurrentPhase() == TurnPhase.END_TURN) {
                 log.warn("Player {} tried to end turn but current phase is {}", playerId, game.getCurrentPhase());
                 return ResponseEntity.badRequest().build();
             }

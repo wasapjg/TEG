@@ -2,6 +2,7 @@ package ar.edu.utn.frc.tup.piii.mappers;
 import ar.edu.utn.frc.tup.piii.dtos.game.GameResponseDto;
 import ar.edu.utn.frc.tup.piii.dtos.player.PlayerRequestDto;
 import ar.edu.utn.frc.tup.piii.dtos.player.PlayerResponseDto;
+import ar.edu.utn.frc.tup.piii.entities.BotProfileEntity;
 import ar.edu.utn.frc.tup.piii.entities.GameEntity;
 import ar.edu.utn.frc.tup.piii.entities.PlayerEntity;
 import ar.edu.utn.frc.tup.piii.model.Player;
@@ -32,6 +33,7 @@ public class PlayerMapper {
                 .displayName(getDisplayName(entity))
                 .isBot(entity.getBotProfile() != null)
                 .botLevel(entity.getBotProfile() != null ? entity.getBotProfile().getLevel() : null)
+                .botProfile(entity.getBotProfile() != null ? entity.getBotProfile() : null)
                 .status(entity.getStatus())
                 .color(entity.getColor())
                 .armiesToPlace(entity.getArmiesToPlace())
@@ -57,6 +59,7 @@ public class PlayerMapper {
         entity.setStatus(model.getStatus());
         entity.setColor(model.getColor());
         entity.setArmiesToPlace(model.getArmiesToPlace());
+        entity.setBotProfile(model.getBotProfile());
         entity.setTradeCount(model.getTradeCount());
         entity.setSeatOrder(model.getSeatOrder());
         entity.setJoinedAt(model.getJoinedAt());
